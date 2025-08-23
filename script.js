@@ -472,7 +472,7 @@ function updateDisplay() {
     const dpr = window.devicePixelRatio || 1;
     const w = displayCanvas.width / dpr;
     const h = displayCanvas.height / dpr;
-    const drawingWidth = w * 0.7;
+    const drawingWidth = w * 0.82;
     displayCtx.clearRect(0, 0, w, h);
     displayCtx.lineWidth = 2;
     displayCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--display-stroke');
