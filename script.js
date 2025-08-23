@@ -13,6 +13,7 @@ const sequencerStepsContainer = document.getElementById('sequencer-steps');
 // AUDIO CONTEXT AND SETTINGS
 let audioContext;
 let masterGainNode;
+let analyserNode; // <-- Adicionado para o osciloscópio
 let effectsChain = {};
 let lfo, lfoGain;
 const activeNotes = new Map();
@@ -21,7 +22,6 @@ let heldNotes = new Set();
 let arpeggiatorInterval = null;
 let arpNotes = [];
 let arpIndex = 0;
-let currentScreenView = 'adsr';
 
 // --- SEQUENCER STATE ---
 let sequencerData = Array(16).fill(false);
@@ -69,6 +69,11 @@ function initAudio() {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             masterGainNode = audioContext.createGain();
             masterGainNode.gain.value = 0.7;
+
+            // Configuração do Analyser para o osciloscópio
+            analyserNode = audioContext.createAnalyser();
+            analyserNode.fftSize = 2048;
+
             lfo = audioContext.createOscillator();
             lfo.frequency.value = synthSettings.lfoRate;
             lfoGain = audioContext.createGain();
@@ -77,6 +82,9 @@ function initAudio() {
             lfo.start();
             initEffects();
             showTemporaryMessage('AUDIO ON');
+            
+            // Inicia o loop de desenho do display
+            updateDisplay();
         } catch (e) {
             console.error("Web Audio API error:", e);
             showTemporaryMessage('ERROR');
@@ -85,9 +93,9 @@ function initAudio() {
 }
 
 function initEffects() {
-    const finalOutput = audioContext.createGain();
-    finalOutput.gain.value = 1.0;
+    // A cadeia de efeitos agora termina conectando ao analyser
     const compressor = audioContext.createDynamicsCompressor();
+    // ... (resto do código de initEffects é o mesmo)
     const reverbInput = audioContext.createGain();
     const reverbOutput = audioContext.createGain();
     const reverbWet = audioContext.createGain();
@@ -132,12 +140,14 @@ function initEffects() {
     waveshaper.connect(distortionWet);
     distortionDry.connect(distortionOutput);
     distortionWet.connect(distortionOutput);
+
     masterGainNode.connect(reverbInput);
     reverbOutput.connect(delayInput);
     delayOutput.connect(distortionInput);
-    distortionOutput.connect(finalOutput);
-    finalOutput.connect(compressor);
-    compressor.connect(audioContext.destination);
+    distortionOutput.connect(compressor);
+    compressor.connect(analyserNode); // Conecta ao analyser
+    analyserNode.connect(audioContext.destination); // E o analyser ao destino final
+
     effectsChain = {
         reverb: { wet: reverbWet, dry: reverbDry },
         delay: { wet: delayWet, dry: delayDry },
@@ -146,24 +156,26 @@ function initEffects() {
 }
 
 function createReverbImpulse() {
-    const length = audioContext.sampleRate * 3;
+    const length = audioContext.sampleRate * 2;
     const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate);
     for (let channel = 0; channel < 2; channel++) {
         const channelData = impulse.getChannelData(channel);
         for (let i = 0; i < length; i++) {
-            const decay = Math.pow(1 - i / length, 2);
-            channelData[i] = (Math.random() * 2 - 1) * decay * 0.5;
+            channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
         }
     }
     return impulse;
 }
 
 function makeDistortionCurve(amount) {
-    const samples = 44100;
-    const curve = new Float32Array(samples);
-    for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = ((3 + amount) * x * 20 * Math.PI / 180) / (Math.PI + amount * Math.abs(x));
+    const k = typeof amount === 'number' ? amount : 50,
+      n_samples = 44100,
+      curve = new Float32Array(n_samples),
+      deg = Math.PI / 180;
+    let i = 0, x;
+    for ( ; i < n_samples; ++i ) {
+      x = i * 2 / n_samples - 1;
+      curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
     }
     return curve;
 }
@@ -221,6 +233,7 @@ function stopNote(noteId, immediate = false) {
     heldNotes.delete(noteId);
 }
 
+// --- Funções restantes (stopAllNotes, updateAllFilters, etc.) permanecem as mesmas ---
 function stopAllNotes(immediate = false) {
     const notesToStop = new Map(activeNotes);
     notesToStop.forEach((_, noteId) => stopNote(noteId, immediate));
@@ -238,10 +251,9 @@ function toggleEffect(effectType) {
     if (!audioContext || !effectsChain[effectType]) return;
     const isActive = synthSettings.effects[effectType];
     const now = audioContext.currentTime;
-    const wetGain = effectType === 'reverb' ? 0.4 : (effectType === 'delay' ? 0.3 : 0.7);
-    const dryGain = 1.0 - wetGain;
+    const wetGain = effectType === 'reverb' ? 0.3 : (effectType === 'delay' ? 0.25 : 0.6);
+    const dryGain = 1.0; // Mantém o sinal seco sempre em 100%
     effectsChain[effectType].wet.gain.setTargetAtTime(isActive ? wetGain : 0, now, 0.1);
-    effectsChain[effectType].dry.gain.setTargetAtTime(isActive ? dryGain : 1.0, now, 0.1);
 }
 
 function startArpeggiator() {
@@ -296,13 +308,13 @@ function toggleSequencer() {
         sequencerInterval = setInterval(sequencerLoop, interval);
     } else {
         clearInterval(sequencerInterval);
+        sequencerInterval = null;
         const steps = sequencerStepsContainer.children;
         for (let i = 0; i < steps.length; i++) {
             steps[i].classList.remove('playing');
         }
     }
 }
-
 
 // --- DISPLAY FUNCTIONS ---
 function showTemporaryMessage(text) {
@@ -313,77 +325,77 @@ function showTemporaryMessage(text) {
     }, 1500);
 }
 
-function updateScreen() {
+function updateScreenInfo() {
     displayParams.p1.textContent = `WAVE: ${synthSettings.waveform.toUpperCase()}`;
     displayParams.p2.textContent = `OCT: ${Math.round(synthSettings.octaveShift)}`;
     displayParams.p3.textContent = `CUT: ${Math.round(synthSettings.filterCutoff)}`;
-    displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
-    displayCtx.strokeStyle = '#34D399';
+}
+
+// Loop de Desenho do Display (Osciloscópio ou Forma de Onda Estática)
+function updateDisplay() {
+    requestAnimationFrame(updateDisplay);
+
+    if (!audioContext) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = displayCanvas.width / dpr;
+    const h = displayCanvas.height / dpr;
+    const drawingWidth = w * 0.80; // <-- A onda ocupará 80% da largura
+
+    displayCtx.clearRect(0, 0, w, h);
     displayCtx.lineWidth = 2;
-    switch(currentScreenView) {
-        case 'adsr': drawADSR(); break;
-        case 'wave': drawWaveform(); break;
-        case 'filter': drawFilterCurve(); break;
-        case 'lfo': drawLFO(); break;
-    }
-}
+    displayCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--display-stroke');
 
-function drawADSR() {
-    const w = displayCanvas.width, h = displayCanvas.height;
-    const peak = h * 0.1, sustainH = h - (h * synthSettings.sustain * 0.8);
-    const attackTime = Math.min(synthSettings.attack * 50, w * 0.25);
-    const decayTime = Math.min(synthSettings.decay * 50, w * 0.25);
-    const releaseTime = Math.min(synthSettings.release * 50, w * 0.4);
-    const sustainWidth = w - (attackTime + decayTime + releaseTime);
-    displayCtx.beginPath();
-    displayCtx.moveTo(0, h);
-    displayCtx.lineTo(attackTime, peak);
-    displayCtx.lineTo(attackTime + decayTime, sustainH);
-    displayCtx.lineTo(attackTime + decayTime + sustainWidth, sustainH);
-    displayCtx.lineTo(w, h);
-    displayCtx.stroke();
-}
+    // Se houver notas ativas, mostra o osciloscópio
+    if (activeNotes.size > 0) {
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserNode.getByteTimeDomainData(dataArray);
 
-function drawWaveform() {
-    const w = displayCanvas.width, h = displayCanvas.height, halfH = h / 2;
-    displayCtx.beginPath();
-    displayCtx.moveTo(0, halfH);
-    for (let i = 0; i < w; i++) {
-        const percent = i / w;
-        let y = halfH;
-        switch(synthSettings.waveform) {
-            case 'sine': y += Math.sin(percent * Math.PI * 4) * (halfH * 0.8); break;
-            case 'square': y += (Math.sin(percent * Math.PI * 4) > 0 ? 1 : -1) * (halfH * 0.8); break;
-            case 'sawtooth': y += (1 - (percent * 2 % 2)) * (halfH * 0.8); break;
-            case 'triangle': y += Math.asin(Math.sin(percent * Math.PI * 4)) / (Math.PI / 2) * (halfH * 0.8); break;
+        displayCtx.beginPath();
+        const sliceWidth = drawingWidth / bufferLength; // <-- Usa a nova largura
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0;
+            const y = v * h / 2;
+            if (i === 0) {
+                displayCtx.moveTo(x, y);
+            } else {
+                displayCtx.lineTo(x, y);
+            }
+            x += sliceWidth;
         }
-        displayCtx.lineTo(i, y);
+        displayCtx.stroke();
+    } else {
+        // Caso contrário, mostra a forma de onda estática
+        const halfH = h / 2;
+        displayCtx.beginPath();
+        displayCtx.moveTo(0, halfH);
+
+        for (let i = 0; i < drawingWidth; i++) { // <-- Loop até a nova largura
+            const percent = i / drawingWidth; // <-- Percentual baseado na nova largura
+            let y = halfH;
+            switch(synthSettings.waveform) {
+                case 'sine': 
+                    y += Math.sin(percent * Math.PI * 4) * (halfH * 0.8); 
+                    break;
+                case 'square': 
+                    y += (Math.sin(percent * Math.PI * 4) > 0 ? 1 : -1) * (halfH * 0.8); 
+                    break;
+                case 'sawtooth': 
+                    y += (1 - (percent * 2 % 2)) * (halfH * 0.8);
+                    break;
+                case 'triangle': 
+                    y += Math.asin(Math.sin(percent * Math.PI * 4)) / (Math.PI / 2) * (halfH * 0.8); 
+                    break;
+            }
+            displayCtx.lineTo(i, y);
+        }
+        displayCtx.stroke();
     }
-    displayCtx.stroke();
 }
 
-function drawFilterCurve() {
-    const w = displayCanvas.width, h = displayCanvas.height;
-    displayCtx.beginPath();
-    displayCtx.moveTo(0, h * 0.1);
-    const cutoffX = (synthSettings.filterCutoff / 15000) * w;
-    displayCtx.lineTo(cutoffX, h * 0.1);
-    displayCtx.bezierCurveTo(cutoffX, h * 0.1, cutoffX, h, w, h);
-    displayCtx.stroke();
-}
-
-function drawLFO() {
-    const w = displayCanvas.width, h = displayCanvas.height, halfH = h / 2;
-    displayCtx.beginPath();
-    displayCtx.moveTo(0, halfH);
-    for (let i = 0; i < w; i++) {
-        const percent = i / w;
-        let y = halfH;
-        y += Math.sin(percent * Math.PI * (synthSettings.lfoRate / 2)) * (synthSettings.lfoDepth / 5000 * halfH);
-        displayCtx.lineTo(i, y);
-    }
-    displayCtx.stroke();
-}
 
 // --- PRESET FUNCTIONS ---
 function savePreset(index) {
@@ -404,17 +416,16 @@ function loadPreset(index) {
         showTemporaryMessage(`PRESET ${index + 1} EMPTY`);
     } else {
         Object.assign(synthSettings, JSON.parse(JSON.stringify(presetToLoad)));
-        sequencerData = [...presetToLoad.sequencer];
+        sequencerData = [...(presetToLoad.sequencer || Array(16).fill(false))];
         showTemporaryMessage(`PRESET ${index + 1} LOADED`);
     }
     updateUIFromSettings();
-    toggleEffect('reverb');
-    toggleEffect('delay');
-    toggleEffect('distortion');
+    ['reverb', 'delay', 'distortion'].forEach(effect => toggleEffect(effect));
     if (synthSettings.performance.arp) startArpeggiator();
 }
 
 function updateUIFromSettings() {
+    // Atualiza os knobs
     document.querySelectorAll('.knob').forEach(knob => {
         const parameter = knob.dataset.parameter;
         const min = parseFloat(knob.dataset.min);
@@ -422,10 +433,11 @@ function updateUIFromSettings() {
         const value = synthSettings[parameter];
         if (parameter && !isNaN(min) && !isNaN(max) && value !== undefined) {
             const rotation = -135 + ((value - min) / (max - min)) * 270;
-            knob.style.setProperty('--knob-rotation', `rotate(${rotation}deg)`);
+            knob.style.setProperty('--knob-rotation', `${rotation}deg`);
         }
     });
     
+    // Atualiza o fader principal
     const mainFader = document.getElementById('main-fader');
     const faderModeBtn = document.getElementById('fader-mode-btn');
     if (synthSettings.faderMode === 'cutoff') {
@@ -438,6 +450,7 @@ function updateUIFromSettings() {
         faderModeBtn.classList.add('active');
     }
 
+    // Atualiza os botões de controle
     document.querySelectorAll('.control-btn').forEach(btn => {
         const wave = btn.dataset.wave, perform = btn.dataset.perform, effect = btn.dataset.effect;
         if (wave) btn.classList.toggle('active', synthSettings.waveform === wave);
@@ -445,16 +458,28 @@ function updateUIFromSettings() {
         if (effect) btn.classList.toggle('active', synthSettings.effects[effect]);
     });
 
-    // Update sequencer steps UI
+    // Atualiza os steps do sequenciador
     const steps = sequencerStepsContainer.children;
     for (let i = 0; i < steps.length; i++) {
         steps[i].classList.toggle('active', sequencerData[i]);
     }
 
-    updateScreen();
+    updateScreenInfo();
+}
+
+function setupDisplayCanvas() {
+    const display = document.querySelector('.display');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = display.getBoundingClientRect();
+    displayCanvas.width = rect.width * dpr;
+    displayCanvas.height = rect.height * dpr;
+    displayCtx.scale(dpr, dpr);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupDisplayCanvas();
+    window.addEventListener('resize', setupDisplayCanvas);
+
     Object.keys(noteFrequencies).forEach(note => {
         const keyElement = document.createElement('div');
         keyElement.className = 'key';
@@ -463,8 +488,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentNoteId = null;
         const startNoteHandler = (e) => {
             e.preventDefault();
-            lastNotePlayed = note; // Update last note for sequencer
-            if (!currentNoteId) {
+            lastNotePlayed = note;
+            if (e.type === 'mousedown' && e.button !== 0) return;
+            if (!keyElement.classList.contains('active')) {
                 if (synthSettings.performance.arp) addToArp(note);
                 else currentNoteId = playNote(note);
                 keyElement.classList.add('active');
@@ -473,8 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const stopNoteHandler = (e) => {
             e.preventDefault();
             if (synthSettings.performance.arp) return;
-            if (currentNoteId && !synthSettings.performance.hold) {
-                stopNote(currentNoteId);
+            if (keyElement.classList.contains('active') && !synthSettings.performance.hold) {
+                if (currentNoteId) stopNote(currentNoteId);
                 keyElement.classList.remove('active');
                 currentNoteId = null;
             }
@@ -491,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.repeat) return;
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note && !keyboardNotes[note]) {
-            lastNotePlayed = note; // Update last note for sequencer
+            lastNotePlayed = note;
             if (synthSettings.performance.arp) addToArp(note);
             else keyboardNotes[note] = playNote(note);
             document.querySelector(`[data-note="${note}"]`)?.classList.add('active');
@@ -501,7 +527,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keyup', e => {
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note) {
-            if (synthSettings.performance.arp) return;
+            if (synthSettings.performance.arp) {
+                arpNotes = arpNotes.filter(n => n !== note);
+                if (arpNotes.length === 0) stopArpeggiator();
+                return;
+            }
             if (!synthSettings.performance.hold) {
                 if (keyboardNotes[note]) {
                     stopNote(keyboardNotes[note]);
@@ -516,23 +546,31 @@ document.addEventListener('DOMContentLoaded', () => {
         knobElement.dataset.parameter = parameter;
         knobElement.dataset.min = min;
         knobElement.dataset.max = max;
-        knobElement.style.setProperty('--knob-color', knobElement.dataset.color);
         let isDragging = false, startY, startValue;
         const handleDrag = (e) => {
             if (!isDragging) return;
             e.preventDefault();
-            if (['attack', 'decay', 'sustain', 'release'].includes(parameter)) currentScreenView = 'adsr';
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             let newValue = startValue + ((startY - clientY) * (max - min) / 200);
             newValue = Math.max(min, Math.min(max, newValue));
             synthSettings[parameter] = newValue;
+            
+            if (parameter === 'octaveShift') {
+                synthSettings.octaveShift = Math.round(newValue);
+            }
+
             const rotation = -135 + ((newValue - min) / (max - min)) * 270;
-            knobElement.style.setProperty('--knob-rotation', `rotate(${rotation}deg)`);
+            knobElement.style.setProperty('--knob-rotation', `${rotation}deg`);
+            
             const displayValue = parameter === 'octaveShift' ? Math.round(newValue) : newValue.toFixed(2);
             showTemporaryMessage(`${displayLabel}: ${displayValue}`);
-            updateScreen();
+            updateScreenInfo();
         };
-        const stopDrag = () => isDragging = false;
+        const stopDrag = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', handleDrag);
+            document.removeEventListener('touchmove', handleDrag);
+        };
         const startDrag = (e) => {
             isDragging = true;
             startY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -544,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
         };
         knobElement.addEventListener('mousedown', startDrag);
-        knobElement.addEventListener('touchstart', startDrag);
+        knobElement.addEventListener('touchstart', startDrag, { passive: false });
     }
 
     const mainFader = document.getElementById('main-fader');
@@ -552,14 +590,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const value = parseFloat(e.target.value);
         if (synthSettings.faderMode === 'cutoff') {
             synthSettings.filterCutoff = value;
-            currentScreenView = 'filter';
             updateAllFilters();
         } else {
             synthSettings.lfoDepth = value;
-            lfoGain.gain.setTargetAtTime(value, audioContext.currentTime, 0.01);
-            currentScreenView = 'lfo';
+            if(audioContext) lfoGain.gain.setTargetAtTime(value, audioContext.currentTime, 0.01);
         }
-        updateScreen();
+        updateScreenInfo();
     });
 
     document.getElementById('fader-mode-btn').addEventListener('click', (e) => {
@@ -570,7 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mainFader.value = synthSettings.lfoDepth;
             e.target.textContent = 'MOD';
             e.target.classList.add('active');
-            currentScreenView = 'lfo';
         } else {
             synthSettings.faderMode = 'cutoff';
             mainFader.min = 100;
@@ -578,9 +613,8 @@ document.addEventListener('DOMContentLoaded', () => {
             mainFader.value = synthSettings.filterCutoff;
             e.target.textContent = 'CUT';
             e.target.classList.remove('active');
-            currentScreenView = 'filter';
         }
-        updateScreen();
+        updateScreenInfo();
     });
 
     document.querySelectorAll('.control-btn[data-wave]').forEach(button => {
@@ -588,8 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.control-btn[data-wave]').forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             synthSettings.waveform = button.dataset.wave;
-            currentScreenView = 'wave';
-            updateScreen();
+            updateScreenInfo();
         });
     });
     document.querySelector('.control-btn[data-wave="sine"]').classList.add('active');
@@ -600,11 +633,11 @@ document.addEventListener('DOMContentLoaded', () => {
             synthSettings.performance[performType] = !synthSettings.performance[performType];
             e.currentTarget.classList.toggle('active', synthSettings.performance[performType]);
             showTemporaryMessage(`${performType.toUpperCase()}: ${synthSettings.performance[performType] ? 'ON' : 'OFF'}`);
-            if (performType === 'arp') synthSettings.performance.arp ? startArpeggiator() : stopArpeggiator();
+            if (performType === 'arp') {
+                synthSettings.performance.arp ? startArpeggiator() : stopArpeggiator();
+            }
             if (performType === 'hold' && !synthSettings.performance.hold) {
-                heldNotes.forEach(noteId => stopNote(noteId, false));
-                heldNotes.clear();
-                document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+                stopAllNotes(false);
             }
         });
     });
@@ -628,7 +661,9 @@ document.addEventListener('DOMContentLoaded', () => {
             pressTimer = setTimeout(() => {
                 isHeld = true;
                 savePreset(index);
-            }, 1000);
+                button.classList.add('saving');
+                setTimeout(() => button.classList.remove('saving'), 500);
+            }, 800);
         };
         const cancelPress = () => clearTimeout(pressTimer);
         button.addEventListener('mousedown', startPress);
@@ -660,8 +695,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupKnob(document.getElementById('knob-decay'), 'decay', 0.01, 2, 'DECAY');
     setupKnob(document.getElementById('knob-release'), 'release', 0.01, 4, 'RELEASE');
 
-    document.addEventListener('click', initAudio, { once: true });
-    document.addEventListener('keydown', initAudio, { once: true });
+    document.body.addEventListener('click', initAudio, { once: true });
+    document.body.addEventListener('keydown', initAudio, { once: true });
 
     updateUIFromSettings();
 });

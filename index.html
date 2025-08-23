@@ -8,7 +8,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
     <!-- Ícones (Phosphor Icons) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -23,7 +23,9 @@
         <div class="main-controls-grid">
             <!-- Coluna Esquerda: Marca e Slider -->
             <div class="left-column">
-                <div class="brand">JWS-1 シンセサイザー</div>
+                <a href="https://jotaverse.com.br" target="_blank" rel="noopener noreferrer" class="brand-link" title="Voltar para Jotaverse">
+                    <div class="brand">JWS-1 シンセサイザー</div>
+                </a>
                 <div class="fader-wrapper">
                     <div class="fader-container">
                         <div class="fader-track"></div>
@@ -41,7 +43,7 @@
                     <div class="top-row">
                         <!-- TELA ATUALIZADA -->
                         <div class="display">
-                            <canvas id="display-canvas" width="400" height="60"></canvas>
+                            <canvas id="display-canvas"></canvas>
                             <div class="display-info">
                                 <div id="display-param1">WAVE: SINE</div>
                                 <div id="display-param2">OCT: 0</div>
@@ -52,23 +54,23 @@
                         <div class="knobs-container">
                             <!-- Knobs com Labels -->
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-octave" data-color="#FF6B35" title="Octave"></div>
+                                <div class="knob" id="knob-octave" title="Octave"></div>
                                 <div class="knob-label">OCT</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-attack" data-color="#4A9EFF" title="Attack"></div>
+                                <div class="knob" id="knob-attack" title="Attack"></div>
                                 <div class="knob-label">ATK</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-sustain" data-color="#FFC700" title="Sustain"></div>
+                                <div class="knob" id="knob-sustain" title="Sustain"></div>
                                 <div class="knob-label">SUS</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-decay" data-color="#00D084" title="Decay"></div>
+                                <div class="knob" id="knob-decay" title="Decay"></div>
                                 <div class="knob-label">DEC</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-release" data-color="#A0A0A0" title="Release"></div>
+                                <div class="knob" id="knob-release" title="Release"></div>
                                 <div class="knob-label">REL</div>
                             </div>
                         </div>
