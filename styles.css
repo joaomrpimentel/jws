@@ -181,7 +181,7 @@ body {
 
 /* Coluna Direita: Painel de Controle */
 .right-column {
-    position: relative; /* Necessário para posicionar o botão de ajuda */
+    position: relative; 
 }
 
 .right-column .control-panel {
@@ -365,6 +365,19 @@ body {
     font-size: 22px;
     line-height: 0;
 }
+
+/* Controles do Arpejador */
+.arp-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.arp-direction-btn {
+    flex: 1;
+    padding: 0;
+    font-size: 12px;
+}
+
 
 /* Sequenciador */
 .sequencer-container {
