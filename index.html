@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>JWS-1</title>
+    <title>JWS-1 (Reimagined)</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,7 @@
                     <div class="fader-container">
                         <div class="fader-track"></div>
                         <!-- Slider de Cutoff/LFO -->
-                        <input type="range" min="100" max="15000" value="1000" class="fader-slider" id="main-fader">
+                        <input type="range" min="0" max="100" value="50" class="fader-slider" id="main-fader">
                     </div>
                     <!-- Botão de modo do Fader -->
                     <button class="fader-mode-btn" id="fader-mode-btn">CUT</button>
@@ -100,8 +100,11 @@
                         <!-- Linha 4 -->
                         <button class="control-btn" data-wave="triangle"><i class="ph-fill ph-wave-triangle"></i></button>
                         <button class="control-btn" data-effect="distortion">DST</button>
-                        <div class="empty-space"></div>
                         <button class="control-btn" id="sequencer-play-btn">SEQ</button>
+                        <div class="arp-controls">
+                            <button class="control-btn arp-direction-btn" id="arp-up-btn" data-direction="up">▲</button>
+                            <button class="control-btn arp-direction-btn" id="arp-down-btn" data-direction="down">▼</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -131,8 +134,9 @@
                 <li><strong>Waveforms:</strong> Select the basic sound shape using the four icon buttons (<i class="ph ph-wave-sine"></i>, <i class="ph ph-wave-square"></i>, etc.).</li>
                 <li><strong>Knobs:</strong> Click and drag vertically on the knobs to change parameters like Octave (OCT), Attack (ATK), Sustain (SUS), Decay (DEC), and Release (REL).</li>
                 <li><strong>Fader:</strong> The main vertical slider controls the Filter Cutoff (CUT) or LFO Modulation (MOD). Click the button below it to switch modes.</li>
+                <li><strong>Arpeggiator (ARP):</strong> Press ARP to activate. Hold down some keys. The synth will play them one by one. Use the ▲ and ▼ buttons to change the order.</li>
                 <li><strong>Presets:</strong> Click buttons 1-4 to load a preset. Hold a button for 1 second to save the current sound to that slot.</li>
-                <li><strong>Effects & Perform:</strong> Toggle effects like Reverb (REV) and performance modes like Arpeggiator (ARP) with their respective buttons.</li>
+                <li><strong>Effects & Perform:</strong> Toggle effects like Reverb (REV) and performance modes like Hold (HLD) with their respective buttons.</li>
                 <li><strong>Sequencer:</strong> Click the squares to activate steps. Press SEQ to play/stop the sequence. The sequencer will play the last note you pressed on the keyboard.</li>
             </ul>
         </div>

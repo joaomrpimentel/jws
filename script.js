@@ -1,4 +1,14 @@
+/**
+ * @file JWS-1 Synthesizer main script.
+ * * This script handles all the logic for the JWS-1 web synthesizer, including
+ * audio generation (oscillators, envelopes, filters), effects, sequencing,
+ * arpeggiation, UI interactions, and preset management.
+ */
+
+//==============================================================================
 // DOM ELEMENT REFERENCES
+//==============================================================================
+
 const keyboardContainer = document.getElementById('keyboard');
 const displayMessage = document.getElementById('display-message');
 const displayCanvas = document.getElementById('display-canvas');
@@ -12,12 +22,18 @@ const sequencerStepsContainer = document.getElementById('sequencer-steps');
 const helpModal = document.getElementById('help-modal');
 const helpBtn = document.getElementById('help-btn');
 const closeModalBtn = document.getElementById('close-modal-btn');
+const arpUpBtn = document.getElementById('arp-up-btn');
+const arpDownBtn = document.getElementById('arp-down-btn');
 
 
-// AUDIO CONTEXT AND SETTINGS
+//==============================================================================
+// GLOBAL STATE & SETTINGS
+//==============================================================================
+
+// --- AUDIO CONTEXT AND SETTINGS ---
 let audioContext;
 let masterGainNode;
-let analyserNode; // <-- Adicionado para o osciloscópio
+let analyserNode;
 let effectsChain = {};
 let lfo, lfoGain;
 const activeNotes = new Map();
@@ -26,15 +42,23 @@ let heldNotes = new Set();
 let arpeggiatorInterval = null;
 let arpNotes = [];
 let arpIndex = 0;
-let lastArpNoteId = null; // <-- Variável para controlar a nota do ARP
+let lastArpNoteId = null;
 
 // --- SEQUENCER STATE ---
 let sequencerData = Array(16).fill(false);
 let sequencerIsPlaying = false;
 let sequencerInterval = null;
 let currentStep = 0;
-let lastNotePlayed = 'C4'; // Default note for sequencer
+let lastNotePlayed = 'C4';
 
+// --- SLIDER CONSTANTS ---
+const MIN_FREQ = 40;
+const MAX_FREQ = 18000;
+
+/**
+ * The main settings object for the synthesizer's sound engine.
+ * @type {object}
+ */
 const synthSettings = {
     waveform: 'sine',
     attack: 0.02,
@@ -56,29 +80,61 @@ const synthSettings = {
     performance: {
         hold: false,
         mono: false,
-        arp: false
+        arp: false,
+        arpDirection: 'up' // 'up' or 'down'
     }
 };
 
+// --- PRESETS & MAPPINGS ---
 const presets = [{}, {}, {}, {}];
 const defaultSynthSettings = JSON.parse(JSON.stringify(synthSettings));
-
 const waveformGains = { sine: 0.8, square: 0.4, sawtooth: 0.5, triangle: 0.7 };
 const noteFrequencies = { 'C4': 261.63, 'Db4': 277.18, 'D4': 293.66, 'Eb4': 311.13, 'E4': 329.63, 'F4': 349.23, 'Gb4': 369.99, 'G4': 392.00, 'Ab4': 415.30, 'A4': 440.00, 'Bb4': 466.16, 'B4': 493.88, 'C5': 523.25 };
 const keyToNoteMap = { 'a': 'C4', 'w': 'Db4', 's': 'D4', 'e': 'Eb4', 'd': 'E4', 'f': 'F4', 't': 'Gb4', 'g': 'G4', 'y': 'Ab4', 'h': 'A4', 'u': 'Bb4', 'j': 'B4', 'k': 'C5' };
 
-// AUDIO FUNCTIONS
+
+//==============================================================================
+// HELPER FUNCTIONS
+//==============================================================================
+
+/**
+ * Converts a linear slider value (0-100) to a logarithmic frequency.
+ * This provides more control over lower frequencies.
+ * @param {number} value The linear value from the slider (0-100).
+ * @returns {number} The corresponding logarithmic frequency.
+ */
+function linearToLog(value) {
+    if (value <= 0) return MIN_FREQ;
+    return MIN_FREQ * Math.pow(MAX_FREQ / MIN_FREQ, value / 100);
+}
+
+/**
+ * Converts a logarithmic frequency back to a linear slider value (0-100).
+ * @param {number} freq The frequency value.
+ * @returns {number} The corresponding linear value for the slider.
+ */
+function logToLinear(freq) {
+    if (freq <= MIN_FREQ) return 0;
+    return 100 * Math.log(freq / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ);
+}
+
+
+//==============================================================================
+// AUDIO ENGINE
+//==============================================================================
+
+/**
+ * Initializes the Web Audio API AudioContext and main nodes.
+ * This function is called once on the first user interaction.
+ */
 function initAudio() {
     if (!audioContext) {
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             masterGainNode = audioContext.createGain();
             masterGainNode.gain.value = 0.7;
-
-            // Configuração do Analyser para o osciloscópio
             analyserNode = audioContext.createAnalyser();
             analyserNode.fftSize = 2048;
-
             lfo = audioContext.createOscillator();
             lfo.frequency.value = synthSettings.lfoRate;
             lfoGain = audioContext.createGain();
@@ -87,8 +143,6 @@ function initAudio() {
             lfo.start();
             initEffects();
             showTemporaryMessage('AUDIO ON');
-            
-            // Inicia o loop de desenho do display
             updateDisplay();
         } catch (e) {
             console.error("Web Audio API error:", e);
@@ -97,10 +151,11 @@ function initAudio() {
     }
 }
 
+/**
+ * Sets up the audio graph for all effects (Reverb, Delay, Distortion).
+ */
 function initEffects() {
-    // A cadeia de efeitos agora termina conectando ao analyser
     const compressor = audioContext.createDynamicsCompressor();
-    // ... (resto do código de initEffects é o mesmo)
     const reverbInput = audioContext.createGain();
     const reverbOutput = audioContext.createGain();
     const reverbWet = audioContext.createGain();
@@ -150,8 +205,8 @@ function initEffects() {
     reverbOutput.connect(delayInput);
     delayOutput.connect(distortionInput);
     distortionOutput.connect(compressor);
-    compressor.connect(analyserNode); // Conecta ao analyser
-    analyserNode.connect(audioContext.destination); // E o analyser ao destino final
+    compressor.connect(analyserNode);
+    analyserNode.connect(audioContext.destination);
 
     effectsChain = {
         reverb: { wet: reverbWet, dry: reverbDry },
@@ -160,6 +215,10 @@ function initEffects() {
     };
 }
 
+/**
+ * Creates a simple impulse response for the convolver reverb effect.
+ * @returns {AudioBuffer} The generated impulse response buffer.
+ */
 function createReverbImpulse() {
     const length = audioContext.sampleRate * 2;
     const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate);
@@ -172,6 +231,11 @@ function createReverbImpulse() {
     return impulse;
 }
 
+/**
+ * Generates a waveshaper curve for the distortion effect.
+ * @param {number} amount The intensity of the distortion.
+ * @returns {Float32Array} The curve for the WaveShaperNode.
+ */
 function makeDistortionCurve(amount) {
     const k = typeof amount === 'number' ? amount : 50,
       n_samples = 44100,
@@ -185,6 +249,12 @@ function makeDistortionCurve(amount) {
     return curve;
 }
 
+/**
+ * Creates and plays a single synthesizer note.
+ * @param {string} note The note to play (e.g., 'C4', 'Db4').
+ * @param {number|null} duration Optional duration in seconds for auto-release.
+ * @returns {string} The unique ID of the created note.
+ */
 function playNote(note, duration = null) {
     if (!audioContext) initAudio();
     if (!noteFrequencies[note]) return;
@@ -225,6 +295,11 @@ function playNote(note, duration = null) {
     return noteId;
 }
 
+/**
+ * Stops a playing note by triggering its release envelope.
+ * @param {string} noteId The unique ID of the note to stop.
+ * @param {boolean} [immediate=false] If true, bypasses the release phase.
+ */
 function stopNote(noteId, immediate = false) {
     if (!audioContext || !activeNotes.has(noteId)) return;
     if (synthSettings.performance.hold && heldNotes.has(noteId) && !immediate) return;
@@ -238,13 +313,19 @@ function stopNote(noteId, immediate = false) {
     heldNotes.delete(noteId);
 }
 
-// --- Funções restantes (stopAllNotes, updateAllFilters, etc.) permanecem as mesmas ---
+/**
+ * Stops all currently playing or held notes.
+ * @param {boolean} [immediate=false] If true, stops all notes instantly.
+ */
 function stopAllNotes(immediate = false) {
     const notesToStop = new Map(activeNotes);
     notesToStop.forEach((_, noteId) => stopNote(noteId, immediate));
     document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
 }
 
+/**
+ * Updates the filter cutoff frequency for all currently active notes.
+ */
 function updateAllFilters() {
     if (!audioContext) return;
     activeNotes.forEach(({ filterNode }) => {
@@ -252,15 +333,26 @@ function updateAllFilters() {
     });
 }
 
+/**
+ * Toggles an effect on or off by adjusting its wet/dry mix.
+ * @param {string} effectType The name of the effect ('reverb', 'delay', 'distortion').
+ */
 function toggleEffect(effectType) {
     if (!audioContext || !effectsChain[effectType]) return;
     const isActive = synthSettings.effects[effectType];
     const now = audioContext.currentTime;
     const wetGain = effectType === 'reverb' ? 0.3 : (effectType === 'delay' ? 0.25 : 0.6);
-    const dryGain = 1.0; // Mantém o sinal seco sempre em 100%
     effectsChain[effectType].wet.gain.setTargetAtTime(isActive ? wetGain : 0, now, 0.1);
 }
 
+
+//==============================================================================
+// PERFORMANCE FEATURES (ARPEGGIATOR & SEQUENCER)
+//==============================================================================
+
+/**
+ * Starts the arpeggiator interval, which plays notes from the arpNotes array.
+ */
 function startArpeggiator() {
     if (arpeggiatorInterval) return;
     arpIndex = 0;
@@ -269,13 +361,23 @@ function startArpeggiator() {
             stopNote(lastArpNoteId, true);
         }
         if (arpNotes.length > 0) {
-            const note = arpNotes[arpIndex];
-            lastArpNoteId = playNote(note);
+            const sortedNotes = [...arpNotes].sort((a, b) => noteFrequencies[a] - noteFrequencies[b]);
+            let noteToPlay;
+            if (synthSettings.performance.arpDirection === 'down') {
+                const descendingIndex = sortedNotes.length - 1 - arpIndex;
+                noteToPlay = sortedNotes[descendingIndex];
+            } else {
+                noteToPlay = sortedNotes[arpIndex];
+            }
+            lastArpNoteId = playNote(noteToPlay);
             arpIndex = (arpIndex + 1) % arpNotes.length;
         }
     }, 200);
 }
 
+/**
+ * Stops the arpeggiator, clears its notes, and stops all sound.
+ */
 function stopArpeggiator() {
     if (arpeggiatorInterval) {
         clearInterval(arpeggiatorInterval);
@@ -290,14 +392,19 @@ function stopArpeggiator() {
     }
 }
 
+/**
+ * Adds a note to the list of notes for the arpeggiator to play.
+ * @param {string} note The note name to add (e.g., 'C4').
+ */
 function addToArp(note) {
     if (!arpNotes.includes(note)) {
         arpNotes.push(note);
-        arpNotes.sort((a, b) => noteFrequencies[a] - noteFrequencies[b]);
     }
 }
 
-// --- SEQUENCER FUNCTIONS ---
+/**
+ * The main loop for the sequencer, called by setInterval.
+ */
 function sequencerLoop() {
     const steps = sequencerStepsContainer.children;
     const prevStep = currentStep === 0 ? 15 : currentStep - 1;
@@ -309,12 +416,15 @@ function sequencerLoop() {
     currentStep = (currentStep + 1) % 16;
 }
 
+/**
+ * Toggles the sequencer playback on and off.
+ */
 function toggleSequencer() {
     sequencerIsPlaying = !sequencerIsPlaying;
     document.getElementById('sequencer-play-btn').classList.toggle('active', sequencerIsPlaying);
     if (sequencerIsPlaying) {
         currentStep = 0;
-        const interval = (60 / synthSettings.sequencerTempo) * 1000 / 4; // 16th notes
+        const interval = (60 / synthSettings.sequencerTempo) * 1000 / 4;
         sequencerInterval = setInterval(sequencerLoop, interval);
     } else {
         clearInterval(sequencerInterval);
@@ -326,7 +436,15 @@ function toggleSequencer() {
     }
 }
 
-// --- DISPLAY FUNCTIONS ---
+
+//==============================================================================
+// UI & DISPLAY
+//==============================================================================
+
+/**
+ * Shows a temporary message on the display overlay.
+ * @param {string} text The message to display.
+ */
 function showTemporaryMessage(text) {
     displayMessage.textContent = text;
     displayMessage.classList.add('visible');
@@ -335,37 +453,36 @@ function showTemporaryMessage(text) {
     }, 1500);
 }
 
+/**
+ * Updates the text parameters (Wave, Octave, Cutoff) on the display.
+ */
 function updateScreenInfo() {
     displayParams.p1.textContent = `WAVE: ${synthSettings.waveform.toUpperCase()}`;
     displayParams.p2.textContent = `OCT: ${Math.round(synthSettings.octaveShift)}`;
     displayParams.p3.textContent = `CUT: ${Math.round(synthSettings.filterCutoff)}`;
 }
 
-// Loop de Desenho do Display (Osciloscópio ou Forma de Onda Estática)
+/**
+ * Main display render loop. Draws either the live oscilloscope or a static
+ * waveform representation based on whether notes are playing.
+ */
 function updateDisplay() {
     requestAnimationFrame(updateDisplay);
-
     if (!audioContext) return;
-
     const dpr = window.devicePixelRatio || 1;
     const w = displayCanvas.width / dpr;
     const h = displayCanvas.height / dpr;
-    const drawingWidth = w * 0.7; // <-- A onda ocupará 70% da largura
-
+    const drawingWidth = w * 0.7;
     displayCtx.clearRect(0, 0, w, h);
     displayCtx.lineWidth = 2;
     displayCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--display-stroke');
-
-    // Se houver notas ativas, mostra o osciloscópio
     if (activeNotes.size > 0) {
         const bufferLength = analyserNode.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyserNode.getByteTimeDomainData(dataArray);
-
         displayCtx.beginPath();
-        const sliceWidth = drawingWidth / bufferLength; // <-- Usa a nova largura
+        const sliceWidth = drawingWidth / bufferLength;
         let x = 0;
-
         for (let i = 0; i < bufferLength; i++) {
             const v = dataArray[i] / 128.0;
             const y = v * h / 2;
@@ -378,27 +495,17 @@ function updateDisplay() {
         }
         displayCtx.stroke();
     } else {
-        // Caso contrário, mostra a forma de onda estática
         const halfH = h / 2;
         displayCtx.beginPath();
         displayCtx.moveTo(0, halfH);
-
-        for (let i = 0; i < drawingWidth; i++) { // <-- Loop até a nova largura
-            const percent = i / drawingWidth; // <-- Percentual baseado na nova largura
+        for (let i = 0; i < drawingWidth; i++) {
+            const percent = i / drawingWidth;
             let y = halfH;
             switch(synthSettings.waveform) {
-                case 'sine': 
-                    y += Math.sin(percent * Math.PI * 4) * (halfH * 0.8); 
-                    break;
-                case 'square': 
-                    y += (Math.sin(percent * Math.PI * 4) > 0 ? 1 : -1) * (halfH * 0.8); 
-                    break;
-                case 'sawtooth': 
-                    y += (1 - (percent * 2 % 2)) * (halfH * 0.8);
-                    break;
-                case 'triangle': 
-                    y += Math.asin(Math.sin(percent * Math.PI * 4)) / (Math.PI / 2) * (halfH * 0.8); 
-                    break;
+                case 'sine': y += Math.sin(percent * Math.PI * 4) * (halfH * 0.8); break;
+                case 'square': y += (Math.sin(percent * Math.PI * 4) > 0 ? 1 : -1) * (halfH * 0.8); break;
+                case 'sawtooth': y += (1 - (percent * 2 % 2)) * (halfH * 0.8); break;
+                case 'triangle': y += Math.asin(Math.sin(percent * Math.PI * 4)) / (Math.PI / 2) * (halfH * 0.8); break;
             }
             displayCtx.lineTo(i, y);
         }
@@ -407,18 +514,28 @@ function updateDisplay() {
 }
 
 
-// --- PRESET FUNCTIONS ---
+//==============================================================================
+// PRESET MANAGEMENT
+//==============================================================================
+
+/**
+ * Saves the current synth settings to a preset slot.
+ * @param {number} index The preset slot index (0-3).
+ */
 function savePreset(index) {
     presets[index] = JSON.parse(JSON.stringify(synthSettings));
-    presets[index].sequencer = [...sequencerData]; // Save sequencer data
+    presets[index].sequencer = [...sequencerData];
     showTemporaryMessage(`PRESET ${index + 1} SAVED`);
 }
 
+/**
+ * Loads synth settings from a preset slot.
+ * @param {number} index The preset slot index (0-3).
+ */
 function loadPreset(index) {
     stopAllNotes(true);
     if (arpeggiatorInterval) stopArpeggiator();
     if (sequencerIsPlaying) toggleSequencer();
-
     const presetToLoad = presets[index];
     if (Object.keys(presetToLoad).length === 0) {
         Object.assign(synthSettings, JSON.parse(JSON.stringify(defaultSynthSettings)));
@@ -434,8 +551,10 @@ function loadPreset(index) {
     if (synthSettings.performance.arp) startArpeggiator();
 }
 
+/**
+ * Updates all UI elements to reflect the current values in synthSettings.
+ */
 function updateUIFromSettings() {
-    // Atualiza os knobs
     document.querySelectorAll('.knob').forEach(knob => {
         const parameter = knob.dataset.parameter;
         const min = parseFloat(knob.dataset.min);
@@ -447,20 +566,22 @@ function updateUIFromSettings() {
         }
     });
     
-    // Atualiza o fader principal
     const mainFader = document.getElementById('main-fader');
     const faderModeBtn = document.getElementById('fader-mode-btn');
     if (synthSettings.faderMode === 'cutoff') {
-        mainFader.value = synthSettings.filterCutoff;
+        mainFader.min = 0;
+        mainFader.max = 100;
+        mainFader.value = logToLinear(synthSettings.filterCutoff);
         faderModeBtn.textContent = 'CUT';
         faderModeBtn.classList.remove('active');
     } else {
+        mainFader.min = 0;
+        mainFader.max = 5000;
         mainFader.value = synthSettings.lfoDepth;
         faderModeBtn.textContent = 'MOD';
         faderModeBtn.classList.add('active');
     }
 
-    // Atualiza os botões de controle
     document.querySelectorAll('.control-btn').forEach(btn => {
         const wave = btn.dataset.wave, perform = btn.dataset.perform, effect = btn.dataset.effect;
         if (wave) btn.classList.toggle('active', synthSettings.waveform === wave);
@@ -468,7 +589,14 @@ function updateUIFromSettings() {
         if (effect) btn.classList.toggle('active', synthSettings.effects[effect]);
     });
 
-    // Atualiza os steps do sequenciador
+    if (synthSettings.performance.arp) {
+        arpUpBtn.classList.toggle('active', synthSettings.performance.arpDirection === 'up');
+        arpDownBtn.classList.toggle('active', synthSettings.performance.arpDirection === 'down');
+    } else {
+        arpUpBtn.classList.remove('active');
+        arpDownBtn.classList.remove('active');
+    }
+
     const steps = sequencerStepsContainer.children;
     for (let i = 0; i < steps.length; i++) {
         steps[i].classList.toggle('active', sequencerData[i]);
@@ -477,6 +605,9 @@ function updateUIFromSettings() {
     updateScreenInfo();
 }
 
+/**
+ * Sets the canvas dimensions based on its container size and device pixel ratio.
+ */
 function setupDisplayCanvas() {
     const display = document.querySelector('.display');
     const dpr = window.devicePixelRatio || 1;
@@ -486,29 +617,29 @@ function setupDisplayCanvas() {
     displayCtx.scale(dpr, dpr);
 }
 
+
+//==============================================================================
+// INITIALIZATION & EVENT LISTENERS
+//==============================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
     setupDisplayCanvas();
     window.addEventListener('resize', setupDisplayCanvas);
 
-    // Lógica do Modal de Ajuda
+    // --- Modal Logic ---
     const showModal = () => helpModal.classList.remove('hidden');
     const hideModal = () => helpModal.classList.add('hidden');
-
     helpBtn.addEventListener('click', showModal);
     closeModalBtn.addEventListener('click', hideModal);
     helpModal.addEventListener('click', (e) => {
-        if (e.target === helpModal) {
-            hideModal();
-        }
+        if (e.target === helpModal) hideModal();
     });
-
-    // Mostrar modal na primeira visita
     if (!localStorage.getItem('jws_visited')) {
         showModal();
         localStorage.setItem('jws_visited', 'true');
     }
 
-
+    // --- Keyboard (Mouse/Touch) Listeners ---
     Object.keys(noteFrequencies).forEach(note => {
         const keyElement = document.createElement('div');
         keyElement.className = 'key';
@@ -520,17 +651,28 @@ document.addEventListener('DOMContentLoaded', () => {
             lastNotePlayed = note;
             if (e.type === 'mousedown' && e.button !== 0) return;
             if (!keyElement.classList.contains('active')) {
-                if (synthSettings.performance.arp) addToArp(note);
-                else currentNoteId = playNote(note);
+                if (synthSettings.performance.arp) {
+                    addToArp(note);
+                } else {
+                    currentNoteId = playNote(note);
+                }
                 keyElement.classList.add('active');
             }
         };
         const stopNoteHandler = (e) => {
             e.preventDefault();
-            if (synthSettings.performance.arp) return;
-            if (keyElement.classList.contains('active') && !synthSettings.performance.hold) {
+            if (synthSettings.performance.hold) return;
+            keyElement.classList.remove('active');
+            if (synthSettings.performance.arp) {
+                arpNotes = arpNotes.filter(n => n !== note);
+                if (arpNotes.length === 0 && arpeggiatorInterval) {
+                    if (lastArpNoteId) {
+                        stopNote(lastArpNoteId, true);
+                        lastArpNoteId = null;
+                    }
+                }
+            } else {
                 if (currentNoteId) stopNote(currentNoteId);
-                keyElement.classList.remove('active');
                 currentNoteId = null;
             }
         };
@@ -541,14 +683,19 @@ document.addEventListener('DOMContentLoaded', () => {
         keyElement.addEventListener('touchend', stopNoteHandler);
     });
 
+    // --- Keyboard (Computer) Listeners ---
     const keyboardNotes = {};
     window.addEventListener('keydown', e => {
         if (e.repeat) return;
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note && !keyboardNotes[note]) {
             lastNotePlayed = note;
-            if (synthSettings.performance.arp) addToArp(note);
-            else keyboardNotes[note] = playNote(note);
+            keyboardNotes[note] = true;
+            if (synthSettings.performance.arp) {
+                addToArp(note);
+            } else {
+                keyboardNotes[note] = playNote(note);
+            }
             document.querySelector(`[data-note="${note}"]`)?.classList.add('active');
         }
     });
@@ -556,21 +703,29 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keyup', e => {
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note) {
-            if (synthSettings.performance.arp) {
-                arpNotes = arpNotes.filter(n => n !== note);
-                // Não para mais o arpejador ao soltar a última tecla
+            if (synthSettings.performance.hold) {
+                delete keyboardNotes[note];
                 return;
             }
-            if (!synthSettings.performance.hold) {
-                if (keyboardNotes[note]) {
+            document.querySelector(`[data-note="${note}"]`)?.classList.remove('active');
+            if (synthSettings.performance.arp) {
+                arpNotes = arpNotes.filter(n => n !== note);
+                 if (arpNotes.length === 0 && arpeggiatorInterval) {
+                    if (lastArpNoteId) {
+                        stopNote(lastArpNoteId, true);
+                        lastArpNoteId = null;
+                    }
+                }
+            } else {
+                if (keyboardNotes[note] && typeof keyboardNotes[note] === 'string') {
                     stopNote(keyboardNotes[note]);
-                    document.querySelector(`[data-note="${note}"]`)?.classList.remove('active');
                 }
             }
             delete keyboardNotes[note];
         }
     });
 
+    // --- Knob Interaction Logic ---
     function setupKnob(knobElement, parameter, min, max, displayLabel) {
         knobElement.dataset.parameter = parameter;
         knobElement.dataset.min = min;
@@ -583,14 +738,11 @@ document.addEventListener('DOMContentLoaded', () => {
             let newValue = startValue + ((startY - clientY) * (max - min) / 200);
             newValue = Math.max(min, Math.min(max, newValue));
             synthSettings[parameter] = newValue;
-            
             if (parameter === 'octaveShift') {
                 synthSettings.octaveShift = Math.round(newValue);
             }
-
             const rotation = -135 + ((newValue - min) / (max - min)) * 270;
             knobElement.style.setProperty('--knob-rotation', `${rotation}deg`);
-            
             const displayValue = parameter === 'octaveShift' ? Math.round(newValue) : newValue.toFixed(2);
             showTemporaryMessage(`${displayLabel}: ${displayValue}`);
             updateScreenInfo();
@@ -614,11 +766,12 @@ document.addEventListener('DOMContentLoaded', () => {
         knobElement.addEventListener('touchstart', startDrag, { passive: false });
     }
 
+    // --- Control Listeners ---
     const mainFader = document.getElementById('main-fader');
     mainFader.addEventListener('input', (e) => {
         const value = parseFloat(e.target.value);
         if (synthSettings.faderMode === 'cutoff') {
-            synthSettings.filterCutoff = value;
+            synthSettings.filterCutoff = linearToLog(value);
             updateAllFilters();
         } else {
             synthSettings.lfoDepth = value;
@@ -630,44 +783,42 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('fader-mode-btn').addEventListener('click', (e) => {
         if (synthSettings.faderMode === 'cutoff') {
             synthSettings.faderMode = 'lfo';
-            mainFader.min = 0;
-            mainFader.max = 5000;
-            mainFader.value = synthSettings.lfoDepth;
-            e.target.textContent = 'MOD';
-            e.target.classList.add('active');
         } else {
             synthSettings.faderMode = 'cutoff';
-            mainFader.min = 100;
-            mainFader.max = 15000;
-            mainFader.value = synthSettings.filterCutoff;
-            e.target.textContent = 'CUT';
-            e.target.classList.remove('active');
         }
+        updateUIFromSettings();
         updateScreenInfo();
     });
 
     document.querySelectorAll('.control-btn[data-wave]').forEach(button => {
         button.addEventListener('click', () => {
-            document.querySelectorAll('.control-btn[data-wave]').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
             synthSettings.waveform = button.dataset.wave;
+            updateUIFromSettings();
             updateScreenInfo();
         });
     });
-    document.querySelector('.control-btn[data-wave="sine"]').classList.add('active');
 
     document.querySelectorAll('[data-perform]').forEach(button => {
         const performType = button.getAttribute('data-perform');
         button.addEventListener('click', (e) => {
             synthSettings.performance[performType] = !synthSettings.performance[performType];
-            e.currentTarget.classList.toggle('active', synthSettings.performance[performType]);
             showTemporaryMessage(`${performType.toUpperCase()}: ${synthSettings.performance[performType] ? 'ON' : 'OFF'}`);
             if (performType === 'arp') {
-                synthSettings.performance.arp ? startArpeggiator() : stopArpeggiator();
+                if (synthSettings.performance.arp) {
+                    startArpeggiator();
+                } else {
+                    stopArpeggiator();
+                }
             }
             if (performType === 'hold' && !synthSettings.performance.hold) {
                 stopAllNotes(false);
+                arpNotes = [];
+                if (arpeggiatorInterval && lastArpNoteId) {
+                    stopNote(lastArpNoteId, true);
+                    lastArpNoteId = null;
+                }
             }
+            updateUIFromSettings();
         });
     });
 
@@ -678,6 +829,13 @@ document.addEventListener('DOMContentLoaded', () => {
             e.currentTarget.classList.toggle('active', synthSettings.effects[effectType]);
             toggleEffect(effectType);
             showTemporaryMessage(`${effectType.toUpperCase()}: ${synthSettings.effects[effectType] ? 'ON' : 'OFF'}`);
+        });
+    });
+
+    [arpUpBtn, arpDownBtn].forEach(button => {
+        button.addEventListener('click', () => {
+            synthSettings.performance.arpDirection = button.dataset.direction;
+            updateUIFromSettings();
         });
     });
 
@@ -705,7 +863,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Sequencer setup
     for (let i = 0; i < 16; i++) {
         const step = document.createElement('div');
         step.className = 'seq-step';
@@ -718,6 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('sequencer-play-btn').addEventListener('click', toggleSequencer);
 
+    // --- Final Setup ---
     setupKnob(document.getElementById('knob-octave'), 'octaveShift', -2, 2, 'OCTAVE');
     setupKnob(document.getElementById('knob-attack'), 'attack', 0.01, 2, 'ATTACK');
     setupKnob(document.getElementById('knob-sustain'), 'sustain', 0, 1, 'SUSTAIN');
