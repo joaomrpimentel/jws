@@ -9,6 +9,10 @@ const displayParams = {
     p3: document.getElementById('display-param3'),
 };
 const sequencerStepsContainer = document.getElementById('sequencer-steps');
+const helpModal = document.getElementById('help-modal');
+const helpBtn = document.getElementById('help-btn');
+const closeModalBtn = document.getElementById('close-modal-btn');
+
 
 // AUDIO CONTEXT AND SETTINGS
 let audioContext;
@@ -22,6 +26,7 @@ let heldNotes = new Set();
 let arpeggiatorInterval = null;
 let arpNotes = [];
 let arpIndex = 0;
+let lastArpNoteId = null; // <-- Variável para controlar a nota do ARP
 
 // --- SEQUENCER STATE ---
 let sequencerData = Array(16).fill(false);
@@ -258,16 +263,16 @@ function toggleEffect(effectType) {
 
 function startArpeggiator() {
     if (arpeggiatorInterval) return;
-    arpNotes = [];
     arpIndex = 0;
     arpeggiatorInterval = setInterval(() => {
-        if (arpNotes.length === 0) return;
-        activeNotes.forEach((noteData, noteId) => {
-            if (noteData.note === arpNotes[arpIndex]) stopNote(noteId, true);
-        });
-        const note = arpNotes[arpIndex];
-        playNote(note);
-        arpIndex = (arpIndex + 1) % arpNotes.length;
+        if (lastArpNoteId) {
+            stopNote(lastArpNoteId, true);
+        }
+        if (arpNotes.length > 0) {
+            const note = arpNotes[arpIndex];
+            lastArpNoteId = playNote(note);
+            arpIndex = (arpIndex + 1) % arpNotes.length;
+        }
     }, 200);
 }
 
@@ -275,8 +280,13 @@ function stopArpeggiator() {
     if (arpeggiatorInterval) {
         clearInterval(arpeggiatorInterval);
         arpeggiatorInterval = null;
+        if (lastArpNoteId) {
+            stopNote(lastArpNoteId, true);
+            lastArpNoteId = null;
+        }
         arpNotes = [];
         arpIndex = 0;
+        stopAllNotes(true);
     }
 }
 
@@ -340,7 +350,7 @@ function updateDisplay() {
     const dpr = window.devicePixelRatio || 1;
     const w = displayCanvas.width / dpr;
     const h = displayCanvas.height / dpr;
-    const drawingWidth = w * 0.80; // <-- A onda ocupará 80% da largura
+    const drawingWidth = w * 0.7; // <-- A onda ocupará 70% da largura
 
     displayCtx.clearRect(0, 0, w, h);
     displayCtx.lineWidth = 2;
@@ -480,6 +490,25 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDisplayCanvas();
     window.addEventListener('resize', setupDisplayCanvas);
 
+    // Lógica do Modal de Ajuda
+    const showModal = () => helpModal.classList.remove('hidden');
+    const hideModal = () => helpModal.classList.add('hidden');
+
+    helpBtn.addEventListener('click', showModal);
+    closeModalBtn.addEventListener('click', hideModal);
+    helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) {
+            hideModal();
+        }
+    });
+
+    // Mostrar modal na primeira visita
+    if (!localStorage.getItem('jws_visited')) {
+        showModal();
+        localStorage.setItem('jws_visited', 'true');
+    }
+
+
     Object.keys(noteFrequencies).forEach(note => {
         const keyElement = document.createElement('div');
         keyElement.className = 'key';
@@ -529,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (note) {
             if (synthSettings.performance.arp) {
                 arpNotes = arpNotes.filter(n => n !== note);
-                if (arpNotes.length === 0) stopArpeggiator();
+                // Não para mais o arpejador ao soltar a última tecla
                 return;
             }
             if (!synthSettings.performance.hold) {

@@ -32,6 +32,30 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
+.help-btn {
+    position: fixed; /* Posição fixa na tela */
+    top: 20px;
+    right: 20px;
+    z-index: 1001; /* Acima do modal overlay */
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--text-color-muted);
+    background-color: var(--surface-color);
+    color: var(--text-color-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.help-btn:hover {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+    transform: scale(1.1);
+}
+
 /* Container principal do sintetizador */
 .synth-container {
     width: 950px;
@@ -83,7 +107,6 @@ body {
 .brand-link:hover .brand {
     color: var(--accent-color);
 }
-
 
 .fader-wrapper {
     display: flex;
@@ -157,6 +180,10 @@ body {
 }
 
 /* Coluna Direita: Painel de Controle */
+.right-column {
+    position: relative; /* Necessário para posicionar o botão de ajuda */
+}
+
 .right-column .control-panel {
     background-color: var(--panel-color);
     border-radius: 16px;
@@ -205,6 +232,7 @@ body {
     color: var(--text-color-muted);
     text-align: right;
     line-height: 1.5;
+    z-index: 2; /* Para ficar sobre o canvas */
 }
 
 .display-message-overlay {
@@ -398,4 +426,90 @@ body {
     border-bottom-width: 2px;
     transform: translateY(2px);
     box-shadow: 0 0 15px var(--accent-color-glow);
+}
+
+/* Modal de Ajuda */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background-color: var(--panel-color);
+    padding: 24px 32px;
+    border-radius: 16px;
+    border: 1px solid var(--shadow-light);
+    box-shadow: 0 10px 30px var(--shadow-dark);
+    max-width: 600px;
+    width: 90%;
+    position: relative;
+    transform: scale(1);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.hidden .modal-content {
+    transform: scale(0.9);
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    color: var(--accent-color);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.modal-content p {
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+.modal-content ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.modal-content li {
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.modal-content strong {
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.modal-content i.ph {
+    font-size: 1.2em;
+    vertical-align: middle;
+    color: var(--accent-color);
+}
+
+.close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-color-muted);
+    font-size: 28px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: var(--accent-color);
 }
