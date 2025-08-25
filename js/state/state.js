@@ -62,3 +62,9 @@ export let lastNotePlayed = 'C4';
 export function setLastNotePlayed(note) {
     lastNotePlayed = note;
 }
+
+// Parâmetro do knob que está sendo editado ativamente
+export let activeKnobParameter = null;
+export function setActiveKnobParameter(param) {
+    activeKnobParameter = param;
+}
