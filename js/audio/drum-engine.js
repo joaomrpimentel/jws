@@ -4,6 +4,14 @@
 import { getAudioContext, getMasterGainNode } from './audio-core.js';
 import { synthSettings } from '../state/state.js';
 
+let vinylBuffer = null; // Buffer para o "crackle" de vinil, criado uma vez
+let lastCrackleTime = 0; // Para controlar a frequência do efeito
+
+/**
+ * Cria um buffer de ruído branco.
+ * @param {number} duration Duração do buffer em segundos.
+ * @returns {AudioBuffer} O buffer de áudio gerado.
+ */
 function createNoiseBuffer(duration = 2) {
     const audioContext = getAudioContext();
     const bufferSize = audioContext.sampleRate * duration;
@@ -15,26 +23,62 @@ function createNoiseBuffer(duration = 2) {
     return buffer;
 }
 
-// **CORREÇÃO DO BUG DO LO-FI**
-// O ruído agora é um som curto, não um loop infinito.
-function playVinylCrackles() {
+/**
+ * Cria um buffer de ruído compartilhado para o efeito de vinil.
+ * Isso é feito apenas uma vez para economizar recursos.
+ */
+function createSharedVinylBuffer() {
     const audioContext = getAudioContext();
-    const noise = audioContext.createBufferSource();
-    noise.buffer = createNoiseBuffer(0.5); // Meio segundo de ruído é suficiente
+    if (!audioContext || vinylBuffer) return;
+
+    const duration = 1; // 1 segundo é suficiente
+    const bufferSize = audioContext.sampleRate * duration;
+    vinylBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const output = vinylBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1; // Ruído branco
+    }
+}
+
+/**
+ * Toca um efeito sonoro de "crackle" de vinil curto e controlado.
+ * Isso impede que o ruído se torne um zumbido constante.
+ */
+function playVinylCrackle() {
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
+
+    // Cria o buffer na primeira chamada
+    if (!vinylBuffer) {
+        createSharedVinylBuffer();
+    }
+    
+    const now = audioContext.currentTime;
+    // Não toca um novo "crackle" se um foi tocado recentemente (ex: nos últimos 150ms)
+    if (now - lastCrackleTime < 0.15) {
+        return;
+    }
+    lastCrackleTime = now;
+
+    const source = audioContext.createBufferSource();
+    source.buffer = vinylBuffer;
 
     const filter = audioContext.createBiquadFilter();
     filter.type = 'bandpass';
-    filter.frequency.value = 1000;
-    filter.Q.value = 0.5;
+    filter.frequency.value = 1200;
+    filter.Q.value = 0.6;
 
     const gain = audioContext.createGain();
-    gain.gain.value = 0.05; // Aumentado um pouco para ser audível
+    // Começa com um ganho baixo e desaparece rapidamente
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
-    noise.connect(filter);
+    source.connect(filter);
     filter.connect(gain);
     gain.connect(getMasterGainNode());
-    noise.start();
-    noise.stop(audioContext.currentTime + 0.5); // Garante que o nó pare
+
+    source.start(now);
+    // O nó de origem será coletado pelo garbage collector após terminar de tocar.
 }
 
 
@@ -80,7 +124,7 @@ export function playKick() {
         dist.curve = curve;
         osc.connect(dist);
         dist.connect(gain);
-        playVinylCrackles(); // Toca o ruído junto com o som
+        playVinylCrackle(); // Toca o ruído junto com o som
     } else {
         osc.connect(gain);
     }
@@ -135,7 +179,7 @@ export function playSnare() {
     bodyOsc2.start(now);
     bodyOsc2.stop(now + 0.1);
 
-    if (kit === 'lofi') playVinylCrackles();
+    if (kit === 'lofi') playVinylCrackle();
 }
 
 export function playHiHat(type = 'closed') {
@@ -172,7 +216,7 @@ export function playHiHat(type = 'closed') {
         noise.start(now);
         noise.stop(now + decay);
     }
-    if (kit === 'lofi') playVinylCrackles();
+    if (kit === 'lofi') playVinylCrackle();
 }
 
 export function playTom(pitch) {
@@ -198,7 +242,7 @@ export function playTom(pitch) {
 
     osc.start(now);
     osc.stop(now + 0.5);
-    if (kit === 'lofi') playVinylCrackles();
+    if (kit === 'lofi') playVinylCrackle();
 }
 
 export function playClap() {
@@ -226,7 +270,7 @@ export function playClap() {
 
     noise.start(now);
     noise.stop(now + 0.2);
-    if (kit === 'lofi') playVinylCrackles();
+    if (kit === 'lofi') playVinylCrackle();
 }
 
 export function playCymbal() {
@@ -257,7 +301,7 @@ export function playCymbal() {
         osc.start(now);
         osc.stop(now + params.cymbalDecay);
     });
-    if (kit === 'lofi') playVinylCrackles();
+    if (kit === 'lofi') playVinylCrackle();
 }
 
 export function playCowbell() {
@@ -286,5 +330,5 @@ export function playCowbell() {
     osc1.stop(now + 0.2);
     osc2.start(now);
     osc2.stop(now + 0.2);
-    if (kit === 'lofi') playVinylCrackles();
+    if (kit === 'lofi') playVinylCrackle();
 }
