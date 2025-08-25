@@ -1,8 +1,8 @@
 /**
  * @file Lógica de interação para os knobs.
  */
-import { synthSettings } from '../state/state.js';
-import { showTemporaryMessage, updateScreenInfo } from './display.js';
+import { synthSettings, setActiveKnobParameter } from '../state/state.js';
+import { setLiveDisplayText, updateScreenInfo } from './display.js';
 
 function setupKnobInteraction(knobElement, parameter, min, max, displayLabel) {
     knobElement.dataset.parameter = parameter;
@@ -26,12 +26,14 @@ function setupKnobInteraction(knobElement, parameter, min, max, displayLabel) {
         knobElement.style.setProperty('--knob-rotation', `${rotation}deg`);
 
         const displayValue = parameter === 'octaveShift' ? Math.round(newValue) : newValue.toFixed(2);
-        showTemporaryMessage(`${displayLabel}: ${displayValue}`);
+        setLiveDisplayText(`${displayLabel}: ${displayValue}`);
         updateScreenInfo();
     };
 
     const stopDrag = () => {
         isDragging = false;
+        setActiveKnobParameter(null);
+        setLiveDisplayText('');
         document.removeEventListener('mousemove', handleDrag);
         document.removeEventListener('touchmove', handleDrag);
         document.removeEventListener('mouseup', stopDrag);
@@ -40,6 +42,7 @@ function setupKnobInteraction(knobElement, parameter, min, max, displayLabel) {
 
     const startDrag = (e) => {
         isDragging = true;
+        setActiveKnobParameter(parameter);
         startY = e.touches ? e.touches[0].clientY : e.clientY;
         startValue = synthSettings[parameter];
         document.addEventListener('mousemove', handleDrag);

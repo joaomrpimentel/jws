@@ -2,7 +2,7 @@
  * @file Gerencia o display do sintetizador (canvas e mensagens).
  */
 import { getAudioContext, getAnalyserNode } from '../audio/audio-core.js';
-import { synthSettings, activeNotes } from '../state/state.js';
+import { synthSettings, activeNotes, activeKnobParameter } from '../state/state.js';
 
 const displayMessage = document.getElementById('display-message');
 const displayCanvas = document.getElementById('display-canvas');
@@ -13,15 +13,30 @@ const displayParams = {
     p3: document.getElementById('display-param3'),
 };
 
+let messageTimer = null;
+let liveDisplayText = '';
+
 /**
- * Mostra uma mensagem temporária na sobreposição do display.
+ * Define o texto a ser exibido dinamicamente no canvas enquanto um knob é ajustado.
+ * @param {string} text O texto para exibir.
+ */
+export function setLiveDisplayText(text) {
+    liveDisplayText = text;
+}
+
+/**
+ * Mostra uma mensagem temporária na sobreposição do display (para ações como salvar presets).
  * @param {string} text A mensagem a ser exibida.
  */
 export function showTemporaryMessage(text) {
+    if (messageTimer) {
+        clearTimeout(messageTimer);
+    }
     displayMessage.textContent = text;
     displayMessage.classList.add('visible');
-    setTimeout(() => {
+    messageTimer = setTimeout(() => {
         displayMessage.classList.remove('visible');
+        messageTimer = null;
     }, 1500);
 }
 
@@ -48,7 +63,38 @@ export function setupDisplay() {
 }
 
 /**
- * Loop principal de renderização do display. Desenha o osciloscópio ao vivo ou uma representação estática da forma de onda.
+ * Desenha a curva do envelope ADSR no canvas.
+ * @param {CanvasRenderingContext2D} ctx O contexto do canvas.
+ * @param {number} w A largura do canvas.
+ * @param {number} h A altura do canvas.
+ */
+function drawEnvelope(ctx, w, h) {
+    const { attack, decay, sustain, release } = synthSettings;
+    const drawingWidth = w * 0.82;
+    
+    // Define um tempo total para visualização para normalizar as durações
+    const totalDuration = attack + decay + 1.0 + release; // 1.0s fixo para a fase de sustain
+
+    // Calcula as coordenadas X para cada fase
+    const attackX = (attack / totalDuration) * drawingWidth;
+    const decayX = ((attack + decay) / totalDuration) * drawingWidth;
+    const sustainX = ((attack + decay + 1.0) / totalDuration) * drawingWidth;
+    const releaseX = drawingWidth;
+
+    // Calcula a coordenada Y para o nível de sustain
+    const sustainY = h * (1 - sustain);
+
+    ctx.beginPath();
+    ctx.moveTo(0, h); // Início (volume 0)
+    ctx.lineTo(attackX, 0); // Pico do Attack (volume máximo)
+    ctx.lineTo(decayX, sustainY); // Fim do Decay (nível de sustain)
+    ctx.lineTo(sustainX, sustainY); // Fim do Sustain (mesmo nível)
+    ctx.lineTo(releaseX, h); // Fim do Release (volume 0)
+    ctx.stroke();
+}
+
+/**
+ * Loop principal de renderização do display.
  */
 function updateDisplayLoop() {
     requestAnimationFrame(updateDisplayLoop);
@@ -62,9 +108,22 @@ function updateDisplayLoop() {
     const drawingWidth = w * 0.82;
     displayCtx.clearRect(0, 0, w, h);
     displayCtx.lineWidth = 2;
-    displayCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--display-stroke');
+    const strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--display-stroke');
+    displayCtx.strokeStyle = strokeStyle;
+    displayCtx.fillStyle = strokeStyle;
 
-    if (activeNotes.size > 0) {
+    const envelopeParams = ['attack', 'decay', 'sustain', 'release'];
+
+    if (activeKnobParameter && liveDisplayText) {
+        if (envelopeParams.includes(activeKnobParameter)) {
+            drawEnvelope(displayCtx, w, h);
+        }
+        displayCtx.font = "700 18px 'JetBrains Mono', monospace";
+        displayCtx.textAlign = 'center';
+        displayCtx.textBaseline = 'middle';
+        displayCtx.fillText(liveDisplayText, drawingWidth / 2, h / 2);
+
+    } else if (activeNotes.size > 0) {
         const bufferLength = analyserNode.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyserNode.getByteTimeDomainData(dataArray);
