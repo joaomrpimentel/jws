@@ -4,25 +4,25 @@
 import { getAudioContext, getMasterGainNode, getLfoGain } from './audio-core.js';
 import { synthSettings, activeNotes, heldNotes, setLastDrumSound } from '../state/state.js';
 import { noteFrequencies, waveformGains } from '../utils/constants.js';
-import * as drumEngine from './drum-engine.js';
+import { playDrumSound } from './drum-engine.js'; // CORREÇÃO: Importa a nova função
 
 let globalId = 0;
 
-// Mapeamento de notas do teclado para sons de bateria
+// Mapeamento de notas do teclado para nomes de samples de bateria
 const drumMap = {
-    'C4': { func: drumEngine.playKick, name: 'kick' },
-    'Db4': { func: drumEngine.playHiHat, args: ['closed'], name: 'hat' },
-    'D4': { func: drumEngine.playSnare, name: 'snare' },
-    'Eb4': { func: drumEngine.playHiHat, args: ['open'], name: 'hat' },
-    'E4': { func: drumEngine.playClap, name: 'clap' },
-    'F4': { func: drumEngine.playTom, args: [1], name: 'tom' },
-    'Gb4': { func: drumEngine.playTom, args: [1.25], name: 'tom' },
-    'G4': { func: drumEngine.playTom, args: [1.5], name: 'tom' },
-    'Ab4': { func: drumEngine.playCowbell, name: 'cowbell' },
-    'A4': { func: drumEngine.playCymbal, name: 'cymbal' },
-    'Bb4': { func: drumEngine.playClap, name: 'clap' },
-    'B4': { func: drumEngine.playCymbal, name: 'cymbal' },
-    'C5': { func: drumEngine.playCymbal, name: 'cymbal' },
+    'C4': { soundName: 'kick', name: 'kick' },
+    'Db4': { soundName: 'hatClosed', name: 'hat' },
+    'D4': { soundName: 'snare', name: 'snare' },
+    'Eb4': { soundName: 'hatOpen', name: 'hat' },
+    'E4': { soundName: 'clap', name: 'clap' },
+    'F4': { soundName: 'tom1', name: 'tom' },
+    'Gb4': { soundName: 'tom2', name: 'tom' },
+    'G4': { soundName: 'tom2', name: 'tom' },
+    'Ab4': { soundName: 'clap', name: 'clap' },
+    'A4': { soundName: 'cymbal', name: 'cymbal' },
+    'Bb4': { soundName: 'clap', name: 'clap' },
+    'B4': { soundName: 'cymbal', name: 'cymbal' },
+    'C5': { soundName: 'cymbal', name: 'cymbal' },
 };
 
 /**
@@ -39,7 +39,8 @@ export function playNote(note, duration = null) {
     if (synthSettings.engine === 'drum') {
         const drumSound = drumMap[note];
         if (drumSound) {
-            drumSound.func.apply(null, drumSound.args || []);
+            // CORREÇÃO: Chama a função playDrumSound com o nome do sample
+            playDrumSound(drumSound.soundName);
             setLastDrumSound(drumSound.name);
         }
         return null; // Sons de bateria não são rastreados como notas

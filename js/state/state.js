@@ -17,22 +17,15 @@ export const synthSettings = {
         octaveShift: 0,
     },
     drum: {
-        kit: 'acoustic', // 'acoustic', 'electronic', 'lofi', 'ethnic'
-        kits: {
-            acoustic: {
-                kickTune: 0.3, snareSnap: 0.5, hatDecay: 0.06, tomPitch: 0.5, cymbalDecay: 0.8
-            },
-            electronic: {
-                kickTune: 0.1, snareSnap: 0.8, hatDecay: 0.1, tomPitch: 0.2, cymbalDecay: 1.2
-            },
-            lofi: {
-                kickTune: 0.6, snareSnap: 0.3, hatDecay: 0.08, tomPitch: 0.6, cymbalDecay: 0.6
-            },
-            ethnic: {
-                kickTune: 0.8, snareSnap: 0.6, hatDecay: 0.04, tomPitch: 0.8, cymbalDecay: 0.7
-            }
+        kit: 'studio', // 'studio', '808', 'tape', 'perc'
+        // Parâmetros globais para os knobs no modo de bateria
+        params: {
+            tune: 0.5,       // 0 a 1, onde 0.5 é o tom original
+            gain: 0.8,       // Volume do kit
+            reverb: 0.0,     // Mix do Reverb
+            bitcrush: 0.0,   // Intensidade do Bitcrusher
+            delay: 0.0,      // Feedback do Delay
         },
-        octaveShift: 0, // Parâmetro "dummy"
     },
 
     // Parâmetros globais, aplicáveis a todos os motores

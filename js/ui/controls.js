@@ -30,7 +30,7 @@ const engineSettings = {
         icons: ['ph-graph', 'ph-arrows-split', 'ph-arrows-merge', 'ph-arrow-u-up-left']
     },
     drum: {
-        options: ['acoustic', 'electronic', 'lofi', 'ethnic'],
+        options: ['studio', '808', 'tape', 'perc'], // CORREÇÃO: Nomes dos kits atualizados
         param: 'kit',
         icons: ['ph-speaker-hifi', 'ph-robot', 'ph-vinyl-record', 'ph-globe']
     }

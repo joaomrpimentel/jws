@@ -4,6 +4,7 @@
  */
 
 import { initAudioEngine } from './audio/audio-core.js';
+import { initDrumEngine } from './audio/drum-engine.js';
 import { setupDisplay } from './ui/display.js';
 import { setupKeyboard } from './ui/keyboard.js';
 import { setupKnobs } from './ui/knobs.js';
@@ -28,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Prepara o motor de áudio para ser iniciado na primeira interação do usuário
     const initAudioOnInteraction = () => {
         initAudioEngine();
+        initDrumEngine(); // CORREÇÃO: Inicia o carregamento dos samples de bateria
         // Remove os listeners após a primeira ativação para não chamar a função novamente
         document.body.removeEventListener('click', initAudioOnInteraction);
         document.body.removeEventListener('keydown', initAudioOnInteraction);

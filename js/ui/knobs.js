@@ -3,33 +3,35 @@
  */
 import { synthSettings, setActiveKnobParameter } from '../state/state.js';
 import { setLiveDisplayText, updateScreenInfo } from './display.js';
+import { updateDrumEffect } from '../audio/drum-engine.js';
+
 
 // Mapeamento de knobs para parâmetros de cada motor
 const knobMapping = {
     'knob-1': {
         subtractive: { param: 'octaveShift', min: -2, max: 2, label: 'OCTAVE' },
         fm: { param: 'ratio', min: 0.1, max: 10, label: 'RATIO' },
-        drum: { param: 'kickTune', min: 0, max: 1, label: 'KICK TUNE' }
+        drum: { param: 'tune', min: 0, max: 1, label: 'TUNE' }
     },
     'knob-2': {
         subtractive: { param: 'attack', min: 0.01, max: 2, label: 'ATTACK' },
         fm: { param: 'attack', min: 0.01, max: 2, label: 'ATTACK' },
-        drum: { param: 'snareSnap', min: 0, max: 1, label: 'SNARE SNAP' }
+        drum: { param: 'gain', min: 0, max: 1.5, label: 'GAIN' }
     },
     'knob-3': {
         subtractive: { param: 'sustain', min: 0, max: 1, label: 'SUSTAIN' },
         fm: { param: 'modIndex', min: 0, max: 1000, label: 'MOD INDEX' },
-        drum: { param: 'hatDecay', min: 0.01, max: 0.5, label: 'HAT DECAY' }
+        drum: { param: 'reverb', min: 0, max: 1, label: 'REVERB' }
     },
     'knob-4': {
         subtractive: { param: 'decay', min: 0.01, max: 2, label: 'DECAY' },
         fm: { param: 'decay', min: 0.01, max: 3, label: 'DECAY' },
-        drum: { param: 'tomPitch', min: 0, max: 1, label: 'TOM TUNE' }
+        drum: { param: 'bitcrush', min: 0, max: 1, label: 'CRUSH' }
     },
     'knob-5': {
         subtractive: { param: 'release', min: 0.01, max: 4, label: 'RELEASE' },
         fm: { param: 'release', min: 0.01, max: 4, label: 'RELEASE' },
-        drum: { param: 'cymbalDecay', min: 0.2, max: 2.5, label: 'CYMBAL DECAY' }
+        drum: { param: 'delay', min: 0, max: 0.8, label: 'DELAY' }
     }
 };
 
@@ -42,11 +44,11 @@ const knobElements = {
 };
 
 export function updateKnobLabels(engine) {
-    document.getElementById('knob-label-1').textContent = {subtractive: 'OCT', fm: 'RAT', drum: 'KICK'}[engine];
-    document.getElementById('knob-label-2').textContent = {subtractive: 'ATK', fm: 'ATK', drum: 'SNAR'}[engine];
-    document.getElementById('knob-label-3').textContent = {subtractive: 'SUS', fm: 'MOD', drum: 'HAT'}[engine];
-    document.getElementById('knob-label-4').textContent = {subtractive: 'DEC', fm: 'DEC', drum: 'TOM'}[engine];
-    document.getElementById('knob-label-5').textContent = {subtractive: 'REL', fm: 'REL', drum: 'CYMB'}[engine];
+    document.getElementById('knob-label-1').textContent = {subtractive: 'OCT', fm: 'RAT', drum: 'TUNE'}[engine];
+    document.getElementById('knob-label-2').textContent = {subtractive: 'ATK', fm: 'ATK', drum: 'GAIN'}[engine];
+    document.getElementById('knob-label-3').textContent = {subtractive: 'SUS', fm: 'MOD', drum: 'REV'}[engine];
+    document.getElementById('knob-label-4').textContent = {subtractive: 'DEC', fm: 'DEC', drum: 'CRUSH'}[engine];
+    document.getElementById('knob-label-5').textContent = {subtractive: 'REL', fm: 'REL', drum: 'DLY'}[engine];
 }
 
 export function updateKnobValues() {
@@ -57,7 +59,7 @@ export function updateKnobValues() {
         
         let valueSource = synthSettings[engine];
         if (engine === 'drum') {
-            valueSource = synthSettings.drum.kits[synthSettings.drum.kit];
+            valueSource = synthSettings.drum.params;
         }
 
         if (config && valueSource[config.param] !== undefined) {
@@ -82,7 +84,7 @@ function setupKnobInteraction(knobId) {
         const engine = synthSettings.engine;
         let valueTarget = synthSettings[engine];
         if (engine === 'drum') {
-            valueTarget = synthSettings.drum.kits[synthSettings.drum.kit];
+            valueTarget = synthSettings.drum.params;
         }
         
         valueTarget[config.param] = newValue;
@@ -91,7 +93,11 @@ function setupKnobInteraction(knobId) {
             valueTarget.octaveShift = Math.round(newValue);
         }
 
-        updateKnobValues(); // Atualiza o knob visualmente
+        if (engine === 'drum') {
+            updateDrumEffect(config.param, newValue);
+        }
+
+        updateKnobValues();
 
         const displayValue = config.param === 'octaveShift' ? Math.round(newValue) : newValue.toFixed(2);
         setLiveDisplayText(`${config.label}: ${displayValue}`);
@@ -119,7 +125,7 @@ function setupKnobInteraction(knobId) {
 
         let valueSource = synthSettings[engine];
         if (engine === 'drum') {
-            valueSource = synthSettings.drum.kits[synthSettings.drum.kit];
+            valueSource = synthSettings.drum.params;
         }
         startValue = valueSource[config.param];
         
