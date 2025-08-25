@@ -17,7 +17,7 @@ const presets = [{}, {}, {}, {}];
 export function savePreset(index) {
     presets[index] = JSON.parse(JSON.stringify(synthSettings));
     presets[index].sequencer = [...sequencerData];
-    showTemporaryMessage(`PRESET ${index + 1} SALVO`);
+    showTemporaryMessage(`PRESET ${index + 1} SAVED`);
 }
 
 /**
@@ -32,7 +32,6 @@ export function loadPreset(index) {
     const presetToLoad = presets[index];
 
     if (Object.keys(presetToLoad).length === 0) {
-        Object.assign(synthSettings, JSON.parse(JSON.stringify(defaultSynthSettings)));
         setSequencerData(Array(16).fill(false));
         showTemporaryMessage(`PRESET ${index + 1} IS EMPTY`);
     } else {
