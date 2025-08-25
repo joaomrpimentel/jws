@@ -33,19 +33,19 @@ export function updateScreenInfo() {
     const params = synthSettings[engine];
     displayParams.p1.textContent = `ENGINE: ${engine.toUpperCase()}`;
     
+    // O parâmetro 3 agora sempre mostra o Cutoff do filtro global
+    displayParams.p3.textContent = `CUT: ${Math.round(synthSettings.filterCutoff)}`;
+    
     switch(engine) {
         case 'drum':
             displayParams.p2.textContent = `KIT: ${params.kit.toUpperCase()}`;
-            displayParams.p3.textContent = `KICK: ${params.kits[params.kit].kickDecay.toFixed(2)}`;
             break;
         case 'fm':
             displayParams.p2.textContent = `ALGO: ${params.algorithm.toUpperCase()}`;
-            displayParams.p3.textContent = `RATIO: ${params.ratio.toFixed(2)}`;
             break;
         case 'subtractive':
         default:
             displayParams.p2.textContent = `WAVE: ${params.waveform.toUpperCase()}`;
-            displayParams.p3.textContent = `CUT: ${Math.round(params.filterCutoff)}`;
             break;
     }
 }

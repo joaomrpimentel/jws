@@ -25,9 +25,9 @@ const engineSettings = {
         icons: ['ph-wave-sine', 'ph-wave-square', 'ph-wave-sawtooth', 'ph-wave-triangle']
     },
     fm: {
-        options: ['bell', 'brass', 'bass', 'sine'],
+        options: ['simple', 'parallel', 'series', 'feedback'],
         param: 'algorithm',
-        icons: ['ph-bell', 'ph-speaker-hifi', 'ph-radio', 'ph-wave-sine']
+        icons: ['ph-graph', 'ph-arrows-split', 'ph-arrows-merge', 'ph-arrow-u-up-left']
     },
     drum: {
         options: ['acoustic', 'electronic'],
@@ -92,7 +92,7 @@ export function updateUIFromState() {
     const currentEngineParams = synthSettings[engine];
 
     if (synthSettings.faderMode === 'cutoff') {
-        mainFader.value = logToLinear(currentEngineParams.filterCutoff);
+        mainFader.value = logToLinear(synthSettings.filterCutoff); // Usa filtro global
         faderModeBtn.textContent = 'CUT';
         faderModeBtn.classList.remove('active');
     } else {
@@ -141,7 +141,7 @@ export function setupControls() {
     mainFader.addEventListener('input', (e) => {
         const value = parseFloat(e.target.value);
         if (synthSettings.faderMode === 'cutoff') {
-            synthSettings[synthSettings.engine].filterCutoff = linearToLog(value);
+            synthSettings.filterCutoff = linearToLog(value); // Ajusta filtro global
             updateAllFilters();
         } else {
             synthSettings.lfoDepth = value;

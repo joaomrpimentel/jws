@@ -16,6 +16,8 @@ const drumMap = {
     'Eb4': { func: drumEngine.playHiHat, args: ['open'], name: 'hat' },
     'E4': { func: drumEngine.playTom, name: 'tom' },
     'F4': { func: drumEngine.playTom, name: 'tom' },
+    'Gb4': { func: drumEngine.playTom, name: 'tom' }, // Adicionando mais toms
+    'G4': { func: drumEngine.playTom, name: 'tom' },
 };
 
 /**
@@ -84,7 +86,7 @@ function playSubtractiveNote(note, noteId) {
     oscillator.frequency.setValueAtTime(frequency, now);
 
     filterNode.type = 'lowpass';
-    filterNode.frequency.setValueAtTime(params.filterCutoff, now);
+    filterNode.frequency.setValueAtTime(synthSettings.filterCutoff, now); // Usa filtro global
     filterNode.Q.setValueAtTime(1, now);
     
     getLfoGain().connect(filterNode.frequency);
@@ -122,32 +124,51 @@ function playFmNote(note, noteId) {
     carrier.frequency.setValueAtTime(frequency, now);
 
     modulator1.type = 'sine';
-    modulator1.frequency.setValueAtTime(frequency * params.ratio, now);
-    mod1Gain.gain.setValueAtTime(params.modIndex, now);
-
     modulator2.type = 'sine';
-    modulator2.frequency.setValueAtTime(frequency * (params.ratio / 2), now);
-    mod2Gain.gain.setValueAtTime(params.modIndex / 2, now);
 
     filterNode.type = 'lowpass';
-    filterNode.frequency.setValueAtTime(params.filterCutoff, now);
+    filterNode.frequency.setValueAtTime(synthSettings.filterCutoff, now); // Usa filtro global
 
     // Conexões baseadas no algoritmo
     switch(params.algorithm) {
-        case 'brass': // M2 -> M1 -> C
-            modulator2.connect(mod2Gain);
-            mod2Gain.connect(modulator1.frequency);
-            modulator1.connect(mod1Gain);
-            mod1Gain.connect(carrier.frequency);
-            break;
-        case 'bass': // (M1 + M2) -> C
+        case 'parallel': // (M1 + M2) -> C
+            modulator1.frequency.setValueAtTime(frequency * params.ratio, now);
+            mod1Gain.gain.setValueAtTime(params.modIndex, now);
+            modulator2.frequency.setValueAtTime(frequency * (params.ratio * 0.5), now);
+            mod2Gain.gain.setValueAtTime(params.modIndex * 0.8, now);
+            
             modulator1.connect(mod1Gain);
             modulator2.connect(mod2Gain);
             mod1Gain.connect(carrier.frequency);
             mod2Gain.connect(carrier.frequency);
             break;
-        case 'bell': // M1 -> C
+        case 'series': // M2 -> M1 -> C
+            modulator1.frequency.setValueAtTime(frequency * params.ratio, now);
+            mod1Gain.gain.setValueAtTime(params.modIndex * 2, now); // Mais intenso
+            modulator2.frequency.setValueAtTime(frequency * (params.ratio * 2.5), now);
+            mod2Gain.gain.setValueAtTime(params.modIndex * 4, now);
+
+            modulator2.connect(mod2Gain);
+            mod2Gain.connect(modulator1.frequency);
+            modulator1.connect(mod1Gain);
+            mod1Gain.connect(carrier.frequency);
+            break;
+        case 'feedback': // C -> C, M1 -> C
+            modulator1.frequency.setValueAtTime(frequency * params.ratio, now);
+            mod1Gain.gain.setValueAtTime(params.modIndex, now);
+            
+            const feedbackGain = audioContext.createGain();
+            feedbackGain.gain.setValueAtTime(params.modIndex / 2, now); // Feedback sutil
+
+            carrier.connect(feedbackGain);
+            feedbackGain.connect(carrier.frequency);
+            modulator1.connect(mod1Gain);
+            mod1Gain.connect(carrier.frequency);
+            break;
+        case 'simple': // M1 -> C
         default:
+            modulator1.frequency.setValueAtTime(frequency * params.ratio, now);
+            mod1Gain.gain.setValueAtTime(params.modIndex, now);
             modulator1.connect(mod1Gain);
             mod1Gain.connect(carrier.frequency);
             break;
@@ -173,7 +194,7 @@ function playFmNote(note, noteId) {
 
 export function stopNote(noteId, immediate = false) {
     const audioContext = getAudioContext();
-    if (!audioContext || !activeNotes.has(noteId)) return;
+    if (!activeNotes.has(noteId)) return;
 
     if (synthSettings.performance.hold && heldNotes.has(noteId) && !immediate) return;
 

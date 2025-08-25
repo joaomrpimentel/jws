@@ -8,13 +8,13 @@ export const synthSettings = {
     subtractive: {
         waveform: 'sine',
         attack: 0.02, decay: 0.1, sustain: 0.8, release: 0.5,
-        octaveShift: 0, filterCutoff: 1000,
+        octaveShift: 0,
     },
     fm: {
-        algorithm: 'bell', // 'sine', 'bell', 'brass', 'bass'
+        algorithm: 'series', // 'simple', 'parallel', 'series', 'feedback'
         ratio: 1.4, modIndex: 250,
         attack: 0.01, decay: 1.0, sustain: 0.5, release: 0.8,
-        octaveShift: 0, filterCutoff: 15000,
+        octaveShift: 0,
     },
     drum: {
         kit: 'acoustic', // 'acoustic', 'electronic'
@@ -26,12 +26,12 @@ export const synthSettings = {
                 kickDecay: 0.8, snareTone: 0.9, hatDecay: 0.1, tomPitch: 0.2,
             }
         },
-        // Parâmetros "dummy" para consistência da UI
-        octaveShift: 0, filterCutoff: 18000
+        octaveShift: 0, // Parâmetro "dummy"
     },
 
-    // Parâmetros globais
+    // Parâmetros globais, aplicáveis a todos os motores
     polyphony: 16,
+    filterCutoff: 18000,
     lfoRate: 5, lfoDepth: 0,
     faderMode: 'cutoff', // 'cutoff' ou 'lfo'
     sequencerTempo: 120,

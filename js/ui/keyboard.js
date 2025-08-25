@@ -19,13 +19,12 @@ export function setupKeyboard() {
         let currentNoteId = null;
 
         const startNoteHandler = (e) => {
-            if (synthSettings.engine === 'drum') return;
             e.preventDefault();
             setLastNotePlayed(note);
             if (e.type === 'mousedown' && e.button !== 0) return;
 
             if (!keyElement.classList.contains('active')) {
-                if (synthSettings.performance.arp) {
+                if (synthSettings.performance.arp && synthSettings.engine !== 'drum') {
                     addToArp(note);
                 } else {
                     currentNoteId = playNote(note);
@@ -35,9 +34,15 @@ export function setupKeyboard() {
         };
 
         const stopNoteHandler = (e) => {
-            if (synthSettings.engine === 'drum') return;
             e.preventDefault();
             if (synthSettings.performance.hold) return;
+            
+            // Sons de bateria não têm 'release' no teclado, então não fazemos nada no mouse up
+            if (synthSettings.engine === 'drum') {
+                keyElement.classList.remove('active');
+                return;
+            }
+
             keyElement.classList.remove('active');
 
             if (synthSettings.performance.arp) {
@@ -64,31 +69,38 @@ export function setupKeyboard() {
     // --- Listeners do Teclado (Computador) ---
     const keyboardNotes = {};
     window.addEventListener('keydown', e => {
-        if (e.repeat || synthSettings.engine === 'drum') return;
+        if (e.repeat) return;
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note && !keyboardNotes[note]) {
             setLastNotePlayed(note);
-            keyboardNotes[note] = true;
-            if (synthSettings.performance.arp) {
+            keyboardNotes[note] = true; // Marca a tecla como pressionada
+
+            if (synthSettings.performance.arp && synthSettings.engine !== 'drum') {
                 addToArp(note);
             } else {
-                keyboardNotes[note] = playNote(note);
+                const noteId = playNote(note);
+                // Apenas armazena o ID se for um som sustentado
+                if (noteId) {
+                    keyboardNotes[note] = noteId;
+                }
             }
             document.querySelector(`[data-note="${note}"]`)?.classList.add('active');
         }
     });
 
     window.addEventListener('keyup', e => {
-        if (synthSettings.engine === 'drum') return;
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note) {
             if (synthSettings.performance.hold) {
                 delete keyboardNotes[note];
                 return;
             }
+            
             document.querySelector(`[data-note="${note}"]`)?.classList.remove('active');
 
-            if (synthSettings.performance.arp) {
+            if (synthSettings.engine === 'drum') {
+                // Não faz nada no keyup para bateria
+            } else if (synthSettings.performance.arp) {
                 const newArpNotes = arpNotes.filter(n => n !== note);
                 setArpNotes(newArpNotes);
                 if (newArpNotes.length === 0) {
