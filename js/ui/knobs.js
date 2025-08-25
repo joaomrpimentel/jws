@@ -9,12 +9,12 @@ const knobMapping = {
     'knob-1': {
         subtractive: { param: 'octaveShift', min: -2, max: 2, label: 'OCTAVE' },
         fm: { param: 'ratio', min: 0.1, max: 10, label: 'RATIO' },
-        drum: { param: 'kickDecay', min: 0.1, max: 1.5, label: 'KICK DECAY' }
+        drum: { param: 'kickTune', min: 0, max: 1, label: 'KICK TUNE' }
     },
     'knob-2': {
         subtractive: { param: 'attack', min: 0.01, max: 2, label: 'ATTACK' },
         fm: { param: 'attack', min: 0.01, max: 2, label: 'ATTACK' },
-        drum: { param: 'snareTone', min: 0, max: 1, label: 'SNARE TONE' }
+        drum: { param: 'snareSnap', min: 0, max: 1, label: 'SNARE SNAP' }
     },
     'knob-3': {
         subtractive: { param: 'sustain', min: 0, max: 1, label: 'SUSTAIN' },
@@ -24,12 +24,12 @@ const knobMapping = {
     'knob-4': {
         subtractive: { param: 'decay', min: 0.01, max: 2, label: 'DECAY' },
         fm: { param: 'decay', min: 0.01, max: 3, label: 'DECAY' },
-        drum: { param: 'tomPitch', min: 0, max: 1, label: 'TOM PITCH' }
+        drum: { param: 'tomPitch', min: 0, max: 1, label: 'TOM TUNE' }
     },
     'knob-5': {
         subtractive: { param: 'release', min: 0.01, max: 4, label: 'RELEASE' },
         fm: { param: 'release', min: 0.01, max: 4, label: 'RELEASE' },
-        drum: { param: 'release', min: 0.01, max: 4, label: 'GLB RELEASE' } // Exemplo, pode não ser usado
+        drum: { param: 'cymbalDecay', min: 0.2, max: 2.5, label: 'CYMBAL DECAY' }
     }
 };
 
@@ -46,7 +46,7 @@ export function updateKnobLabels(engine) {
     document.getElementById('knob-label-2').textContent = {subtractive: 'ATK', fm: 'ATK', drum: 'SNAR'}[engine];
     document.getElementById('knob-label-3').textContent = {subtractive: 'SUS', fm: 'MOD', drum: 'HAT'}[engine];
     document.getElementById('knob-label-4').textContent = {subtractive: 'DEC', fm: 'DEC', drum: 'TOM'}[engine];
-    document.getElementById('knob-label-5').textContent = 'REL';
+    document.getElementById('knob-label-5').textContent = {subtractive: 'REL', fm: 'REL', drum: 'CYMB'}[engine];
 }
 
 export function updateKnobValues() {
@@ -56,8 +56,7 @@ export function updateKnobValues() {
         const config = knobMapping[knobId][engine];
         
         let valueSource = synthSettings[engine];
-        // Caso especial para os knobs de bateria, que leem do kit ativo
-        if (engine === 'drum' && config.param !== 'release') {
+        if (engine === 'drum') {
             valueSource = synthSettings.drum.kits[synthSettings.drum.kit];
         }
 
@@ -82,7 +81,7 @@ function setupKnobInteraction(knobId) {
         
         const engine = synthSettings.engine;
         let valueTarget = synthSettings[engine];
-        if (engine === 'drum' && config.param !== 'release') {
+        if (engine === 'drum') {
             valueTarget = synthSettings.drum.kits[synthSettings.drum.kit];
         }
         
@@ -119,7 +118,7 @@ function setupKnobInteraction(knobId) {
         startY = e.touches ? e.touches[0].clientY : e.clientY;
 
         let valueSource = synthSettings[engine];
-        if (engine === 'drum' && config.param !== 'release') {
+        if (engine === 'drum') {
             valueSource = synthSettings.drum.kits[synthSettings.drum.kit];
         }
         startValue = valueSource[config.param];

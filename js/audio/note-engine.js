@@ -14,10 +14,15 @@ const drumMap = {
     'Db4': { func: drumEngine.playHiHat, args: ['closed'], name: 'hat' },
     'D4': { func: drumEngine.playSnare, name: 'snare' },
     'Eb4': { func: drumEngine.playHiHat, args: ['open'], name: 'hat' },
-    'E4': { func: drumEngine.playTom, name: 'tom' },
-    'F4': { func: drumEngine.playTom, name: 'tom' },
-    'Gb4': { func: drumEngine.playTom, name: 'tom' }, // Adicionando mais toms
-    'G4': { func: drumEngine.playTom, name: 'tom' },
+    'E4': { func: drumEngine.playClap, name: 'clap' },
+    'F4': { func: drumEngine.playTom, args: [1], name: 'tom' },
+    'Gb4': { func: drumEngine.playTom, args: [1.25], name: 'tom' },
+    'G4': { func: drumEngine.playTom, args: [1.5], name: 'tom' },
+    'Ab4': { func: drumEngine.playCowbell, name: 'cowbell' },
+    'A4': { func: drumEngine.playCymbal, name: 'cymbal' },
+    'Bb4': { func: drumEngine.playClap, name: 'clap' },
+    'B4': { func: drumEngine.playCymbal, name: 'cymbal' },
+    'C5': { func: drumEngine.playCymbal, name: 'cymbal' },
 };
 
 /**

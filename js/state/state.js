@@ -17,13 +17,19 @@ export const synthSettings = {
         octaveShift: 0,
     },
     drum: {
-        kit: 'acoustic', // 'acoustic', 'electronic'
+        kit: 'acoustic', // 'acoustic', 'electronic', 'lofi', 'ethnic'
         kits: {
             acoustic: {
-                kickDecay: 0.4, snareTone: 0.6, hatDecay: 0.05, tomPitch: 0.5,
+                kickTune: 0.3, snareSnap: 0.5, hatDecay: 0.06, tomPitch: 0.5, cymbalDecay: 0.8
             },
             electronic: {
-                kickDecay: 0.8, snareTone: 0.9, hatDecay: 0.1, tomPitch: 0.2,
+                kickTune: 0.1, snareSnap: 0.8, hatDecay: 0.1, tomPitch: 0.2, cymbalDecay: 1.2
+            },
+            lofi: {
+                kickTune: 0.6, snareSnap: 0.3, hatDecay: 0.08, tomPitch: 0.6, cymbalDecay: 0.6
+            },
+            ethnic: {
+                kickTune: 0.8, snareSnap: 0.6, hatDecay: 0.04, tomPitch: 0.8, cymbalDecay: 0.7
             }
         },
         octaveShift: 0, // Parâmetro "dummy"

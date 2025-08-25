@@ -30,9 +30,9 @@ const engineSettings = {
         icons: ['ph-graph', 'ph-arrows-split', 'ph-arrows-merge', 'ph-arrow-u-up-left']
     },
     drum: {
-        options: ['acoustic', 'electronic'],
+        options: ['acoustic', 'electronic', 'lofi', 'ethnic'],
         param: 'kit',
-        icons: ['ph-drum', 'ph-robot', 'ph-leaf', 'ph-alien'] // Apenas 2 kits por enquanto
+        icons: ['ph-speaker-hifi', 'ph-robot', 'ph-vinyl-record', 'ph-globe']
     }
 };
 

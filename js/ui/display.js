@@ -88,18 +88,13 @@ function drawDrumTransient(ctx, w, h, type) {
         const p = i / drawingWidth; // 0 to 1
         let amp = 0;
         switch(type) {
-            case 'kick':
-                amp = Math.exp(-p * 25) * Math.sin(p * Math.PI * 2);
-                break;
-            case 'snare':
-                amp = (Math.random() * 2 - 1) * Math.exp(-p * 30);
-                break;
-            case 'hat':
-                amp = (Math.random() * 2 - 1) * Math.exp(-p * 60);
-                break;
-            case 'tom':
-                amp = Math.exp(-p * 20) * Math.sin(p * Math.PI * 8);
-                break;
+            case 'kick': amp = Math.exp(-p * 25) * Math.sin(p * Math.PI * 2); break;
+            case 'snare': amp = (Math.random() * 2 - 1) * Math.exp(-p * 30); break;
+            case 'hat': amp = (Math.random() * 2 - 1) * Math.exp(-p * 60); break;
+            case 'tom': amp = Math.exp(-p * 20) * Math.sin(p * Math.PI * 8); break;
+            case 'clap': amp = Math.sin(p * Math.PI * 100) * Math.exp(-p * 40); break;
+            case 'cymbal': amp = (Math.random() * 2 - 1) * Math.exp(-p * 10); break;
+            case 'cowbell': amp = (Math.sin(p * Math.PI * 20) + Math.sin(p * Math.PI * 30)) * Math.exp(-p * 40); break;
         }
         ctx.lineTo(i, h/2 + amp * (h/2 * 0.9));
     }
