@@ -30,7 +30,7 @@ export const synthSettings = {
 
     // Parâmetros globais, aplicáveis a todos os motores
     polyphony: 16,
-    filterCutoff: 18000,
+    filterCutoff: 1000,
     lfoRate: 5, lfoDepth: 0,
     faderMode: 'cutoff', // 'cutoff' ou 'lfo'
     sequencerTempo: 120,
