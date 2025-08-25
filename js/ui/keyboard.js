@@ -19,6 +19,7 @@ export function setupKeyboard() {
         let currentNoteId = null;
 
         const startNoteHandler = (e) => {
+            if (synthSettings.engine === 'drum') return;
             e.preventDefault();
             setLastNotePlayed(note);
             if (e.type === 'mousedown' && e.button !== 0) return;
@@ -34,6 +35,7 @@ export function setupKeyboard() {
         };
 
         const stopNoteHandler = (e) => {
+            if (synthSettings.engine === 'drum') return;
             e.preventDefault();
             if (synthSettings.performance.hold) return;
             keyElement.classList.remove('active');
@@ -62,7 +64,7 @@ export function setupKeyboard() {
     // --- Listeners do Teclado (Computador) ---
     const keyboardNotes = {};
     window.addEventListener('keydown', e => {
-        if (e.repeat) return;
+        if (e.repeat || synthSettings.engine === 'drum') return;
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note && !keyboardNotes[note]) {
             setLastNotePlayed(note);
@@ -77,6 +79,7 @@ export function setupKeyboard() {
     });
 
     window.addEventListener('keyup', e => {
+        if (synthSettings.engine === 'drum') return;
         const note = keyToNoteMap[e.key.toLowerCase()];
         if (note) {
             if (synthSettings.performance.hold) {
