@@ -20,7 +20,7 @@
 
     <button id="help-btn" class="help-btn" title="Help">?</button>
 
-    <div class="synth-container">
+    <div class="synth-container engine-subtractive" id="synth-container">
         <!-- Linha Superior: Controles Principais -->
         <div class="main-controls-grid">
             <!-- Coluna Esquerda: Marca e Slider -->
@@ -31,10 +31,8 @@
                 <div class="fader-wrapper">
                     <div class="fader-container">
                         <div class="fader-track"></div>
-                        <!-- Slider de Cutoff/LFO -->
                         <input type="range" min="0" max="100" value="50" class="fader-slider" id="main-fader">
                     </div>
-                    <!-- Botão de modo do Fader -->
                     <button class="fader-mode-btn" id="fader-mode-btn">CUT</button>
                 </div>
             </div>
@@ -43,62 +41,59 @@
             <div class="right-column">
                 <div class="control-panel">
                     <div class="top-row">
-                        <!-- TELA ATUALIZADA -->
                         <div class="display">
                             <canvas id="display-canvas"></canvas>
                             <div class="display-info">
-                                <div id="display-param1">WAVE: SINE</div>
-                                <div id="display-param2">OCT: 0</div>
-                                <div id="display-param3">CUT: 1000</div>
+                                <div id="display-param1">ENGINE: SUBTRACTIVE</div>
+                                <div id="display-param2">WAVE: SINE</div>
+                                <div id="display-param3">CUT: 18000</div>
                             </div>
                             <div id="display-message" class="display-message-overlay">READY</div>
                         </div>
                         <div class="knobs-container">
-                            <!-- Knobs com Labels -->
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-octave" title="Octave"></div>
-                                <div class="knob-label">OCT</div>
+                                <div class="knob" id="knob-1"></div>
+                                <div class="knob-label" id="knob-label-1">OCT</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-attack" title="Attack"></div>
-                                <div class="knob-label">ATK</div>
+                                <div class="knob" id="knob-2"></div>
+                                <div class="knob-label" id="knob-label-2">ATK</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-sustain" title="Sustain"></div>
-                                <div class="knob-label">SUS</div>
+                                <div class="knob" id="knob-3"></div>
+                                <div class="knob-label" id="knob-label-3">SUS</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-decay" title="Decay"></div>
-                                <div class="knob-label">DEC</div>
+                                <div class="knob" id="knob-4"></div>
+                                <div class="knob-label" id="knob-label-4">DEC</div>
                             </div>
                             <div class="knob-wrapper">
-                                <div class="knob" id="knob-release" title="Release"></div>
-                                <div class="knob-label">REL</div>
+                                <div class="knob" id="knob-5"></div>
+                                <div class="knob-label" id="knob-label-5">REL</div>
                             </div>
                         </div>
                     </div>
-                    <!-- GRID UNIFICADO PARA OS BOTÕES -->
                     <div class="unified-button-grid">
                         <!-- Linha 1 -->
-                        <button class="control-btn" data-wave="sine"><i class="ph-fill ph-wave-sine"></i></button>
+                        <button class="control-btn instrument-btn" id="instrument-btn-1"><i class="ph-fill ph-wave-sine"></i></button>
                         <button class="control-btn num-btn" data-preset="1">1</button>
                         <button class="control-btn num-btn" data-preset="2">2</button>
                         <button class="control-btn" id="hold-btn" data-perform="hold">HLD</button>
                         
                         <!-- Linha 2 -->
-                        <button class="control-btn" data-wave="square"><i class="ph-fill ph-wave-square"></i></button>
+                        <button class="control-btn instrument-btn" id="instrument-btn-2"><i class="ph-fill ph-wave-square"></i></button>
                         <button class="control-btn num-btn" data-preset="3">3</button>
                         <button class="control-btn num-btn" data-preset="4">4</button>
-                        <button class="control-btn" id="mono-btn" data-perform="mono">MON</button>
+                        <button class="control-btn" id="engine-btn">ENG</button>
 
                         <!-- Linha 3 -->
-                        <button class="control-btn" data-wave="sawtooth"><i class="ph-fill ph-wave-sawtooth"></i></button>
+                        <button class="control-btn instrument-btn" id="instrument-btn-3"><i class="ph-fill ph-wave-sawtooth"></i></button>
                         <button class="control-btn" data-effect="reverb">REV</button>
                         <button class="control-btn" data-effect="delay">DLY</button>
                         <button class="control-btn" id="arp-btn" data-perform="arp">ARP</button>
                         
                         <!-- Linha 4 -->
-                        <button class="control-btn" data-wave="triangle"><i class="ph-fill ph-wave-triangle"></i></button>
+                        <button class="control-btn instrument-btn" id="instrument-btn-4"><i class="ph-fill ph-wave-triangle"></i></button>
                         <button class="control-btn" data-effect="distortion">DST</button>
                         <button class="control-btn" id="sequencer-play-btn">SEQ</button>
                         <div class="arp-controls">
@@ -110,39 +105,35 @@
             </div>
         </div>
         
-        <!-- Sequenciador -->
         <div class="sequencer-container">
-            <div class="seq-steps" id="sequencer-steps">
-                <!-- Passos do sequenciador gerados pelo JS -->
-            </div>
+            <div class="seq-steps" id="sequencer-steps"></div>
         </div>
 
-        <!-- Teclado -->
-        <div class="keyboard-container" id="keyboard">
-            <!-- Teclas geradas pelo JavaScript -->
-        </div>
+        <div class="keyboard-container" id="keyboard"></div>
     </div>
 
-    <!-- Modal de Ajuda -->
     <div id="help-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <button id="close-modal-btn" class="close-btn">&times;</button>
-            <h2>Welcome to JWS-1!</h2>
-            <p>Here's a quick guide to get you started:</p>
+            <h2>JWS-1 Quick Guide</h2>
+            <hr>
+
+            <h3>How to Play</h3>
+            <p>Use your computer keyboard (middle and top rows) or click the on-screen piano to play notes.</p>
+            
+            <hr>
+
+            <h3>Key Controls</h3>
             <ul>
-                <li><strong>Keyboard:</strong> Play notes using your mouse or computer keyboard (A, W, S, E, D, F, T, G, Y, H, U, J, K).</li>
-                <li><strong>Waveforms:</strong> Select the basic sound shape using the four icon buttons (<i class="ph ph-wave-sine"></i>, <i class="ph ph-wave-square"></i>, etc.).</li>
-                <li><strong>Knobs:</strong> Click and drag vertically on the knobs to change parameters like Octave (OCT), Attack (ATK), Sustain (SUS), Decay (DEC), and Release (REL).</li>
-                <li><strong>Fader:</strong> The main vertical slider controls the Filter Cutoff (CUT) or LFO Modulation (MOD). Click the button below it to switch modes.</li>
-                <li><strong>Arpeggiator (ARP):</strong> Press ARP to activate. Hold down some keys. The synth will play them one by one. Use the ▲ and ▼ buttons to change the order.</li>
-                <li><strong>Presets:</strong> Click buttons 1-4 to load a preset. Hold a button for 1 second to save the current sound to that slot.</li>
-                <li><strong>Effects & Perform:</strong> Toggle effects like Reverb (REV) and performance modes like Hold (HLD) with their respective buttons.</li>
-                <li><strong>Sequencer:</strong> Click the squares to activate steps. Press SEQ to play/stop the sequence. The sequencer will play the last note you pressed on the keyboard.</li>
+                <li><strong>OSC (Oscillators):</strong> These create the raw sound. Try changing the waveform buttons (SAW, SQR, etc.) to alter the basic tone.</li>
+                <li><strong>FILTER:</strong> This shapes your sound's brightness. The <strong>Cutoff</strong> knob is the most important control here.</li>
+                <li><strong>ENV (Envelope):</strong> This controls the shape of your sound's volume. <strong>A</strong> (Attack) controls the fade-in speed, and <strong>R</strong> (Release) controls the fade-out.</li>
+                <li><strong>ENG (Engine):</strong> This selects the type of sound generator. The available knob controls adapt depending on the chosen engine.</li>
             </ul>
-        </div>
+            <hr>
+            <p class="credits">Made by <a href="https://github.com/joaomrpimentel" target="_blank">João Pimentel</a></p>
     </div>
 
-    <!-- JavaScript - Carregado como Módulo -->
     <script src="js/main.js" type="module"></script>
 </body>
 </html>

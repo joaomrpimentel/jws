@@ -34,11 +34,11 @@ export function loadPreset(index) {
     if (Object.keys(presetToLoad).length === 0) {
         Object.assign(synthSettings, JSON.parse(JSON.stringify(defaultSynthSettings)));
         setSequencerData(Array(16).fill(false));
-        showTemporaryMessage(`PRESET ${index + 1} VAZIO`);
+        showTemporaryMessage(`PRESET ${index + 1} IS EMPTY`);
     } else {
         Object.assign(synthSettings, JSON.parse(JSON.stringify(presetToLoad)));
         setSequencerData([...(presetToLoad.sequencer || Array(16).fill(false))]);
-        showTemporaryMessage(`PRESET ${index + 1} CARREGADO`);
+        showTemporaryMessage(`PRESET ${index + 1} LOADED`);
     }
 
     updateUIFromState();
