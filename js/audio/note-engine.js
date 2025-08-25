@@ -1,14 +1,19 @@
 /**
- * @file Lógica para tocar e parar notas, agora com múltiplos motores de som.
- */
+* @file Lógica para tocar e parar notas, com suporte a múltiplos motores de som (subtrativo, FM e bateria).
+* @description Este módulo gerencia o roteamento de notas para diferentes motores de som,
+* controla polifonia, sustain/hold e aplica ADSR. Também inclui integração com o motor de bateria.
+*/
 import { getAudioContext, getMasterGainNode, getLfoGain } from './audio-core.js';
 import { synthSettings, activeNotes, heldNotes, setLastDrumSound } from '../state/state.js';
 import { noteFrequencies, waveformGains } from '../utils/constants.js';
-import { playDrumSound } from './drum-engine.js'; // CORREÇÃO: Importa a nova função
+import { playDrumSound } from './drum-engine.js';
 
 let globalId = 0;
 
-// Mapeamento de notas do teclado para nomes de samples de bateria
+/**
+* @constant {Object} drumMap
+* @description Mapeamento de notas MIDI para sons de bateria.
+*/
 const drumMap = {
     'C4': { soundName: 'kick', name: 'kick' },
     'Db4': { soundName: 'hatClosed', name: 'hat' },
@@ -26,11 +31,13 @@ const drumMap = {
 };
 
 /**
- * Roteador principal para tocar uma nota. Chama o motor de som apropriado.
- * @param {string} note A nota a ser tocada (ex: 'C4').
- * @param {number|null} duration Duração opcional em segundos.
- * @returns {string|null} O ID único da nota criada.
- */
+* Toca uma nota de acordo com o motor de som selecionado.
+* - Para bateria: dispara o sample correspondente.
+* - Para sintetizadores: cria osciladores e aplica ADSR.
+* @param {string} note - Nota a ser tocada (ex: 'C4').
+* @param {number|null} duration - Duração opcional em segundos.
+* @returns {string|null} ID único da nota criada, ou null se não aplicável.
+*/
 export function playNote(note, duration = null) {
     const audioContext = getAudioContext();
     if (!audioContext || !noteFrequencies[note]) return null;
@@ -39,7 +46,6 @@ export function playNote(note, duration = null) {
     if (synthSettings.engine === 'drum') {
         const drumSound = drumMap[note];
         if (drumSound) {
-            // CORREÇÃO: Chama a função playDrumSound com o nome do sample
             playDrumSound(drumSound.soundName);
             setLastDrumSound(drumSound.name);
         }
@@ -78,6 +84,13 @@ export function playNote(note, duration = null) {
     return noteId;
 }
 
+/**
+* Motor de síntese subtrativa.
+* Cria oscilador, filtro e envelope de amplitude.
+* @param {string} note - Nota a ser tocada.
+* @param {string} noteId - Identificador único da nota.
+* @returns {Object} Estrutura com nós de áudio e metadados da nota.
+*/
 function playSubtractiveNote(note, noteId) {
     const audioContext = getAudioContext();
     const now = audioContext.currentTime;
@@ -112,6 +125,13 @@ function playSubtractiveNote(note, noteId) {
     return { nodes: [oscillator], gainNode, filterNode, note, startTime: now };
 }
 
+/**
+* Motor de síntese FM (Frequency Modulation).
+* Cria portadora, moduladores e aplica algoritmos de modulação.
+* @param {string} note - Nota a ser tocada.
+* @param {string} noteId - Identificador único da nota.
+* @returns {Object} Estrutura com nós de áudio e metadados da nota.
+*/
 function playFmNote(note, noteId) {
     const audioContext = getAudioContext();
     const now = audioContext.currentTime;
@@ -198,6 +218,12 @@ function playFmNote(note, noteId) {
     return { nodes: [carrier, modulator1, modulator2], gainNode, filterNode, note, startTime: now };
 }
 
+/**
+* Para uma nota específica, aplicando o tempo de release definido.
+* Remove a nota do estado global.
+* @param {string} noteId - Identificador da nota.
+* @param {boolean} [immediate=false] - Se true, aplica release imediato.
+*/
 export function stopNote(noteId, immediate = false) {
     const audioContext = getAudioContext();
     if (!activeNotes.has(noteId)) return;
@@ -219,6 +245,10 @@ export function stopNote(noteId, immediate = false) {
     heldNotes.delete(noteId);
 }
 
+/**
+* Para todas as notas ativas.
+* @param {boolean} [immediate=false] - Se true, aplica release imediato em todas.
+*/
 export function stopAllNotes(immediate = false) {
     const notesToStop = new Map(activeNotes);
     notesToStop.forEach((_, noteId) => stopNote(noteId, immediate));

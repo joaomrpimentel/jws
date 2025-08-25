@@ -1,6 +1,8 @@
 /**
- * @file Event listeners para os botões de controle, fader e presets.
- */
+* @file Event listeners para os botões de controle, fader e presets.
+* @description Este módulo conecta a interface do usuário com o estado interno do sintetizador.
+* Gerencia botões de instrumentos, modos do fader, efeitos, performance (hold, arp) e presets.
+*/
 import { synthSettings, sequencerData, setArpNotes } from '../state/state.js';
 import { updateAllFilters, toggleEffect, getLfoGain } from '../audio/audio-core.js';
 import { stopAllNotes } from '../audio/note-engine.js';
@@ -10,7 +12,16 @@ import { linearToLog, logToLinear } from '../utils/helpers.js';
 import { showTemporaryMessage, updateScreenInfo } from './display.js';
 import { updateKnobLabels, updateKnobValues } from './knobs.js';
 
+/**
+* @constant {string[]} availableEngines
+* @description Lista dos motores de som disponíveis.
+*/
 const availableEngines = ['subtractive', 'fm', 'drum'];
+
+/**
+* @constant {HTMLElement[]} instrumentBtns
+* @description Referências aos botões de seleção de instrumento.
+*/
 const instrumentBtns = [
     document.getElementById('instrument-btn-1'),
     document.getElementById('instrument-btn-2'),
@@ -18,6 +29,13 @@ const instrumentBtns = [
     document.getElementById('instrument-btn-4'),
 ];
 
+/**
+* @constant {Object} engineSettings
+* @description Configurações específicas de cada motor de som:
+* - `options`: valores possíveis.
+* - `param`: parâmetro de `synthSettings` associado.
+* - `icons`: ícones exibidos nos botões.
+*/
 const engineSettings = {
     subtractive: {
         options: ['sine', 'square', 'sawtooth', 'triangle'],
@@ -30,12 +48,16 @@ const engineSettings = {
         icons: ['ph-graph', 'ph-arrows-split', 'ph-arrows-merge', 'ph-arrow-u-up-left']
     },
     drum: {
-        options: ['studio', '808', 'tape', 'perc'], // CORREÇÃO: Nomes dos kits atualizados
+        options: ['studio', '808', 'tape', 'perc'],
         param: 'kit',
         icons: ['ph-speaker-hifi', 'ph-robot', 'ph-vinyl-record', 'ph-globe']
     }
 };
 
+/**
+* Reconfigura os listeners dos botões de instrumento de acordo com o motor atual.
+* Evita acúmulo de listeners substituindo os elementos.
+*/
 function setupInstrumentButtonListeners() {
     const engine = synthSettings.engine;
     const config = engineSettings[engine];
@@ -57,8 +79,9 @@ function setupInstrumentButtonListeners() {
 
 
 /**
- * Atualiza a UI para refletir o motor de som atual.
- */
+* Atualiza a interface para refletir o motor de som atual.
+* Aplica classes CSS, ícones e reconfigura botões.
+*/
 function updateUIForEngine() {
     const engine = synthSettings.engine;
     const config = engineSettings[engine];
@@ -81,8 +104,9 @@ function updateUIForEngine() {
 }
 
 /**
- * Atualiza todos os elementos da UI para refletir os valores atuais em synthSettings.
- */
+* Atualiza todos os elementos da UI com base nos valores em `synthSettings`.
+* Inclui botões de performance, efeitos, arpejador e sequenciador.
+*/
 export function updateUIFromState() {
     updateKnobValues();
 
@@ -135,7 +159,17 @@ export function updateUIFromState() {
     updateScreenInfo();
 }
 
-
+/**
+* Configura todos os event listeners da interface:
+* - Fader principal (cutoff/LFO).
+* - Botão de modo do fader.
+* - Botões de performance (arp, hold, etc.).
+* - Botões de efeitos (reverb, delay, etc.).
+* - Direção do arpejador.
+* - Alternância de motores de som.
+* - Presets (carregar e salvar por long press).
+* Também aplica configuração inicial da UI.
+*/
 export function setupControls() {
     const mainFader = document.getElementById('main-fader');
     mainFader.addEventListener('input', (e) => {

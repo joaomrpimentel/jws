@@ -34,14 +34,13 @@ export function initAudioEngine() {
 
         initEffects(audioContext, masterGainNode, analyserNode);
 
-        // **CORREÇÃO: Conecta o analisador à saída de áudio final.**
         analyserNode.connect(audioContext.destination);
 
         showTemporaryMessage('AUDIO ON');
         updateScreenInfo();
     } catch (e) {
         console.error("Erro na Web Audio API:", e);
-        showTemporaryMessage('ERRO DE ÁUDIO');
+        showTemporaryMessage('AUDIO ERROR');
     }
 }
 

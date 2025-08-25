@@ -1,5 +1,9 @@
 /**
  * @file Gerencia o display do sintetizador (canvas e mensagens).
+ *
+ * Este módulo controla a renderização visual do display do sintetizador,
+ * exibindo mensagens temporárias, informações do motor ativo, parâmetros
+ * e formas de onda ou envelopes em tempo real.
  */
 import { getAudioContext, getAnalyserNode } from '../audio/audio-core.js';
 import { synthSettings, activeNotes, activeKnobParameter, lastDrumSound } from '../state/state.js';
@@ -16,8 +20,17 @@ const displayParams = {
 let messageTimer = null;
 let liveDisplayText = '';
 
+/**
+ * Define o texto exibido dinamicamente no display (ex.: valor de knob).
+ * @param {string} text Texto a ser exibido.
+ */
 export function setLiveDisplayText(text) { liveDisplayText = text; }
 
+/**
+ * Mostra uma mensagem temporária no display textual.
+ * A mensagem desaparece automaticamente após 1,5s.
+ * @param {string} text Texto a ser exibido.
+ */
 export function showTemporaryMessage(text) {
     if (messageTimer) clearTimeout(messageTimer);
     displayMessage.textContent = text;
@@ -28,12 +41,14 @@ export function showTemporaryMessage(text) {
     }, 1500);
 }
 
+/**
+ * Atualiza as informações fixas do display (engine ativo, parâmetro principal, cutoff).
+ */
 export function updateScreenInfo() {
     const engine = synthSettings.engine;
     const params = synthSettings[engine];
     displayParams.p1.textContent = `ENGINE: ${engine.toUpperCase()}`;
     
-    // O parâmetro 3 agora sempre mostra o Cutoff do filtro global
     displayParams.p3.textContent = `CUT: ${Math.round(synthSettings.filterCutoff)}`;
     
     switch(engine) {
@@ -50,6 +65,10 @@ export function updateScreenInfo() {
     }
 }
 
+/**
+ * Configura o canvas do display para suportar diferentes resoluções (HiDPI).
+ * Também inicia o loop de atualização visual.
+ */
 export function setupDisplay() {
     const display = document.querySelector('.display');
     const dpr = window.devicePixelRatio || 1;
@@ -60,6 +79,13 @@ export function setupDisplay() {
     requestAnimationFrame(updateDisplayLoop);
 }
 
+/**
+ * Desenha um envelope ADSR (Attack, Decay, Sustain, Release).
+ * @param {CanvasRenderingContext2D} ctx Contexto do canvas.
+ * @param {number} w Largura do canvas.
+ * @param {number} h Altura do canvas.
+ * @param {{attack:number, decay:number, sustain:number, release:number}} params Parâmetros do envelope.
+ */
 function drawEnvelope(ctx, w, h, params) {
     const { attack, decay, sustain, release } = params;
     const drawingWidth = w * 0.82;
@@ -79,13 +105,20 @@ function drawEnvelope(ctx, w, h, params) {
     ctx.stroke();
 }
 
+/**
+ * Desenha uma forma transiente de bateria (kick, snare, hat, etc.).
+ * @param {CanvasRenderingContext2D} ctx Contexto do canvas.
+ * @param {number} w Largura do canvas.
+ * @param {number} h Altura do canvas.
+ * @param {string} type Tipo do som de bateria (ex.: 'kick', 'snare').
+ */
 function drawDrumTransient(ctx, w, h, type) {
     const drawingWidth = w * 0.82;
     ctx.beginPath();
     ctx.moveTo(0, h / 2);
     
     for (let i = 0; i < drawingWidth; i++) {
-        const p = i / drawingWidth; // 0 to 1
+        const p = i / drawingWidth; // 0 a 1
         let amp = 0;
         switch(type) {
             case 'kick': amp = Math.exp(-p * 25) * Math.sin(p * Math.PI * 2); break;
@@ -101,7 +134,10 @@ function drawDrumTransient(ctx, w, h, type) {
     ctx.stroke();
 }
 
-
+/**
+ * Loop de atualização contínua do display.
+ * Renderiza formas de onda, envelopes ou transientes dependendo do estado atual.
+ */
 function updateDisplayLoop() {
     requestAnimationFrame(updateDisplayLoop);
     const audioContext = getAudioContext();
@@ -122,15 +158,18 @@ function updateDisplayLoop() {
     const envelopeParams = ['attack', 'decay', 'sustain', 'release'];
 
     if (activeKnobParameter && liveDisplayText) {
+        // Mostra envelope se knob relacionado a ADSR estiver ativo
         if (envelopeParams.includes(activeKnobParameter)) {
             drawEnvelope(displayCtx, w, h, synthSettings[synthSettings.engine]);
         }
+        // Mostra valor numérico/textual no centro do display
         displayCtx.font = "700 18px 'JetBrains Mono', monospace";
         displayCtx.textAlign = 'center';
         displayCtx.textBaseline = 'middle';
         displayCtx.fillText(liveDisplayText, drawingWidth / 2, h / 2);
 
     } else if (activeNotes.size > 0 && synthSettings.engine !== 'drum') {
+        // Mostra waveform em tempo real usando o AnalyserNode
         const bufferLength = analyserNode.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyserNode.getByteTimeDomainData(dataArray);
@@ -146,16 +185,17 @@ function updateDisplayLoop() {
         }
         displayCtx.stroke();
     } else {
-        // Visualização do último som de bateria tocado
+        // Visualização de bateria (último som tocado)
         if (synthSettings.engine === 'drum' && lastDrumSound.type && (performance.now() - lastDrumSound.time < 250)) {
             drawDrumTransient(displayCtx, w, h, lastDrumSound.type);
-            return; // Evita desenhar a waveform padrão por cima
+            return; // Evita desenhar waveform padrão por cima
         }
 
         const halfH = h / 2;
         displayCtx.beginPath();
         displayCtx.moveTo(0, halfH);
 
+        // Visualização por engine
         if (synthSettings.engine === 'subtractive') {
             const waveform = synthSettings.subtractive.waveform;
             for (let i = 0; i < drawingWidth; i++) {

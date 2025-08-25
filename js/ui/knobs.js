@@ -1,12 +1,24 @@
 /**
  * @file Lógica de interação para os knobs contextuais.
+ * 
+ * Este módulo gerencia a interação do usuário com os knobs da interface,
+ * mapeando cada knob a parâmetros específicos dos diferentes motores de áudio
+ * (subtractive, FM e drum). Ele também atualiza os rótulos, valores e lida
+ * com a lógica de arrastar para alterar os parâmetros.
  */
 import { synthSettings, setActiveKnobParameter } from '../state/state.js';
 import { setLiveDisplayText, updateScreenInfo } from './display.js';
 import { updateDrumEffect } from '../audio/drum-engine.js';
 
-
-// Mapeamento de knobs para parâmetros de cada motor
+/**
+ * Mapeamento de knobs para parâmetros de cada motor de som.
+ * 
+ * Cada knob é associado a um objeto que contém:
+ * - `param` {string}: Nome do parâmetro em `synthSettings` ou `synthSettings.drum.params`.
+ * - `min` {number}: Valor mínimo permitido.
+ * - `max` {number}: Valor máximo permitido.
+ * - `label` {string}: Texto exibido no display quando alterado.
+ */
 const knobMapping = {
     'knob-1': {
         subtractive: { param: 'octaveShift', min: -2, max: 2, label: 'OCTAVE' },
@@ -35,6 +47,7 @@ const knobMapping = {
     }
 };
 
+// Referências aos elementos de knob no DOM
 const knobElements = {
     'knob-1': document.getElementById('knob-1'),
     'knob-2': document.getElementById('knob-2'),
@@ -43,6 +56,11 @@ const knobElements = {
     'knob-5': document.getElementById('knob-5'),
 };
 
+/**
+ * Atualiza os rótulos exibidos abaixo dos knobs de acordo com o motor ativo.
+ *
+ * @param {string} engine - Motor de áudio atual ("subtractive", "fm" ou "drum").
+ */
 export function updateKnobLabels(engine) {
     document.getElementById('knob-label-1').textContent = {subtractive: 'OCT', fm: 'RAT', drum: 'TUNE'}[engine];
     document.getElementById('knob-label-2').textContent = {subtractive: 'ATK', fm: 'ATK', drum: 'GAIN'}[engine];
@@ -51,6 +69,10 @@ export function updateKnobLabels(engine) {
     document.getElementById('knob-label-5').textContent = {subtractive: 'REL', fm: 'REL', drum: 'DLY'}[engine];
 }
 
+/**
+ * Atualiza visualmente os knobs, rotacionando-os de acordo com o valor do parâmetro.
+ * A rotação vai de -135° (valor mínimo) a +135° (valor máximo).
+ */
 export function updateKnobValues() {
     const engine = synthSettings.engine;
     for (const knobId in knobElements) {
@@ -70,6 +92,19 @@ export function updateKnobValues() {
     }
 }
 
+/**
+ * Configura a interação de um knob específico (arraste com mouse ou toque).
+ *
+ * @param {string} knobId - ID do knob a ser configurado.
+ *
+ * O fluxo de interação é:
+ * 1. Ao pressionar (mousedown/touchstart), salva posição inicial e valor inicial.
+ * 2. Durante o arraste, calcula novo valor proporcional ao deslocamento vertical.
+ *    - Para `octaveShift`, arredonda para valores inteiros.
+ *    - Para `drum`, chama `updateDrumEffect` para aplicar efeitos em tempo real.
+ * 3. Atualiza visualmente o knob e o display.
+ * 4. Ao soltar, remove listeners e reseta o estado.
+ */
 function setupKnobInteraction(knobId) {
     const knobElement = knobElements[knobId];
     let isDragging = false, startY, startValue, config;
@@ -140,6 +175,9 @@ function setupKnobInteraction(knobId) {
     knobElement.addEventListener('touchstart', startDrag, { passive: false });
 }
 
+/**
+ * Configura todos os knobs da interface, habilitando interação via arraste.
+ */
 export function setupKnobs() {
     for (const knobId in knobElements) {
         setupKnobInteraction(knobId);

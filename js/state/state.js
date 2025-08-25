@@ -11,7 +11,7 @@ export const synthSettings = {
         octaveShift: 0,
     },
     fm: {
-        algorithm: 'series', // 'simple', 'parallel', 'series', 'feedback'
+        algorithm: 'simple', // 'simple', 'parallel', 'series', 'feedback'
         ratio: 1.4, modIndex: 250,
         attack: 0.01, decay: 1.0, sustain: 0.5, release: 0.8,
         octaveShift: 0,

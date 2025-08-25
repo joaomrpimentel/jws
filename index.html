@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>JWS-1 v6</title>
+    <title>JWS-1</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -115,21 +115,23 @@
     <div id="help-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <button id="close-modal-btn" class="close-btn">&times;</button>
-            <h2>Welcome to JWS-1</h2>
-            <p>The drum engine has been massively upgraded. Here's what's new:</p>
+            <h2>JWS-1 Quick Guide</h2>
+            <hr>
+
+            <h3>How to Play</h3>
+            <p>Use your computer keyboard (middle and top rows) or click the on-screen piano to play notes.</p>
+            
+            <hr>
+
+            <h3>Key Controls</h3>
             <ul>
-                <li><strong>Four Drum Kits:</strong> In Drum Mode, you can now select between four distinct kits:
-                    <ul>
-                        <li><i class="ph-fill ph-drum"></i> <strong>Acoustic:</strong> Classic, realistic drum sounds.</li>
-                        <li><i class="ph-fill ph-robot"></i> <strong>Electronic:</strong> Punchy, 808-style machine sounds.</li>
-                        <li><i class="ph-fill ph-vinyl-record"></i> <strong>Lo-Fi:</strong> Saturated, dusty beats with vinyl crackle.</li>
-                        <li><i class="ph-fill ph-globe"></i> <strong>Ethnic:</strong> World percussion sounds like bongos and congas.</li>
-                    </ul>
-                </li>
-                 <li><strong>Full Drum Kits on Keyboard:</strong> The entire keyboard is mapped to a full set of drum and percussion sounds for each kit.</li>
-                 <li><strong>Global Filter:</strong> The main Fader now controls a master filter cutoff that affects ALL sound engines.</li>
+                <li><strong>OSC (Oscillators):</strong> These create the raw sound. Try changing the waveform buttons (SAW, SQR, etc.) to alter the basic tone.</li>
+                <li><strong>FILTER:</strong> This shapes your sound's brightness. The <strong>Cutoff</strong> knob is the most important control here.</li>
+                <li><strong>ENV (Envelope):</strong> This controls the shape of your sound's volume. <strong>A</strong> (Attack) controls the fade-in speed, and <strong>R</strong> (Release) controls the fade-out.</li>
+                <li><strong>ENG (Engine):</strong> This selects the type of sound generator. The available knob controls adapt depending on the chosen engine.</li>
             </ul>
-        </div>
+            <hr>
+            <p class="credits">Made by <a href="https://github.com/joaomrpimentel" target="_blank">João Pimentel</a></p>
     </div>
 
     <script src="js/main.js" type="module"></script>

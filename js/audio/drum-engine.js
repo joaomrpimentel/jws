@@ -1,9 +1,10 @@
 /**
- * @file Motor de bateria baseado em samples com efeitos.
- */
+* @file Motor de bateria baseado em samples com efeitos.
+* @description Este módulo gerencia o carregamento, configuração e reprodução de samples de bateria,
+* aplicando efeitos como reverb, delay, filtro, bitcrusher e ganho. Utiliza a API Web Audio.
+*/
 import { getAudioContext, getMasterGainNode } from './audio-core.js';
 import { synthSettings } from '../state/state.js';
-import { showTemporaryMessage } from '../ui/display.js';
 
 let audioBuffers = {};
 let isLoading = false;
@@ -13,7 +14,10 @@ let audioContextRef = null;
 let drumGain, drumReverb, drumReverbGain, drumDelay, drumDelayFeedback, bitcrusherNode;
 let drumFilter;
 
-// Mapeamento com os novos nomes e caminhos
+/**
+* @constant {Object} samplePaths
+* @description Caminhos dos samples de diferentes kits de bateria.
+*/
 const samplePaths = {
     studio: {
         kick: 'samples/acoustic-kit/kick.mp3',
@@ -57,6 +61,12 @@ const samplePaths = {
     }
 };
 
+/**
+* Carrega e decodifica um sample de áudio a partir de uma URL.
+* @async
+* @param {string} url - Caminho do arquivo de áudio.
+* @returns {Promise<AudioBuffer|null>} Retorna o buffer de áudio ou null se falhar.
+*/
 async function loadSample(url) {
     try {
         const response = await fetch(url);
@@ -69,10 +79,13 @@ async function loadSample(url) {
     }
 }
 
+/**
+* Carrega todos os samples definidos em `samplePaths`.
+* @async
+*/
 async function loadAllSamples() {
     if (isLoading || Object.keys(audioBuffers).length > 0) return;
     isLoading = true;
-    showTemporaryMessage('LOADING DRUMS...');
 
     const allPromises = [];
     for (const kit in samplePaths) {
@@ -88,13 +101,12 @@ async function loadAllSamples() {
 
     await Promise.all(allPromises);
     isLoading = false;
-    showTemporaryMessage('DRUMS READY');
 }
 
 /**
- * Cria um nó de bitcrusher usando a API moderna WaveShaper.
- * É mais performático e estável que o ScriptProcessorNode.
- */
+* Cria um nó de bitcrusher utilizando WaveShaperNode.
+* @returns {WaveShaperNode} Nó configurado para aplicar o efeito de bitcrush.
+*/
 function createBitcrusher() {
     const node = audioContextRef.createWaveShaper();
     node.updateCurve = (bits) => {
@@ -115,6 +127,10 @@ function createBitcrusher() {
 }
 
 
+/**
+* Configura os efeitos da bateria (ganho, reverb, delay, filtro e bitcrusher).
+* Cria a cadeia de processamento do áudio.
+*/
 function setupDrumEffects() {
     drumGain = audioContextRef.createGain();
     drumReverb = audioContextRef.createConvolver();
@@ -133,14 +149,11 @@ function setupDrumEffects() {
     }
     drumReverb.buffer = impulse;
 
-    // CORREÇÃO: Cadeia de efeitos reorganizada para eliminar ruído
-    // O som principal passa pelo ganho, filtro e delay primeiro.
     drumGain.connect(drumFilter)
         .connect(drumDelay)
-        .connect(bitcrusherNode) // O bitcrusher agora é o último na cadeia principal
+        .connect(bitcrusherNode)
         .connect(getMasterGainNode());
 
-    // Rota de feedback do delay (inalterada)
     drumDelay.connect(drumDelayFeedback).connect(drumDelay);
 
     // Rota paralela para o reverb (send) vem depois do filtro, para um som mais limpo
@@ -153,6 +166,11 @@ function setupDrumEffects() {
     updateDrumEffect('bitcrush', params.bitcrush);
 }
 
+
+/**
+* Inicializa o motor de bateria, configurando o contexto de áudio,
+* efeitos e carregando os samples.
+*/
 export function initDrumEngine() {
     audioContextRef = getAudioContext();
     if (audioContextRef) {
@@ -161,6 +179,11 @@ export function initDrumEngine() {
     }
 }
 
+/**
+* Atualiza parâmetros de efeitos da bateria.
+* @param {string} param - Nome do parâmetro ("gain", "reverb", "delay", "bitcrush").
+* @param {number} value - Valor normalizado (0-1).
+*/
 export function updateDrumEffect(param, value) {
     if (!audioContextRef) return;
     const now = audioContextRef.currentTime;
@@ -181,12 +204,21 @@ export function updateDrumEffect(param, value) {
     }
 }
 
+/**
+* Obtém a saída do motor de bateria após o filtro e efeitos.
+* @returns {AudioNode} Nó de saída (GainNode) da bateria.
+*/
 function getDrumOutput() {
     if (!audioContextRef) return getMasterGainNode();
     drumFilter.frequency.setTargetAtTime(synthSettings.filterCutoff, audioContextRef.currentTime, 0.01);
     return drumGain;
 }
 
+/**
+* Reproduz um som de bateria específico do kit selecionado.
+* Aplica afinação e direciona para a cadeia de efeitos.
+* @param {string} soundName - Nome do som a ser tocado (kick, snare, hat, etc.).
+*/
 export function playDrumSound(soundName) {
     if (isLoading || !audioContextRef) return;
 

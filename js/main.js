@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Prepara o motor de áudio para ser iniciado na primeira interação do usuário
     const initAudioOnInteraction = () => {
         initAudioEngine();
-        initDrumEngine(); // CORREÇÃO: Inicia o carregamento dos samples de bateria
+        initDrumEngine();
         // Remove os listeners após a primeira ativação para não chamar a função novamente
         document.body.removeEventListener('click', initAudioOnInteraction);
         document.body.removeEventListener('keydown', initAudioOnInteraction);
